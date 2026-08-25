@@ -1,0 +1,73 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  @apply bg-cream-100 text-coffee-800 font-sans antialiased;
+  overflow-x: hidden;
+}
+
+/* 스크롤바 - 데스크톱에서 은은하게 */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #d8c9af transparent;
+}
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+*::-webkit-scrollbar-thumb {
+  background: #d8c9af;
+  border-radius: 3px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+@layer components {
+  .chip {
+    @apply inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-3.5 py-2 text-[13px] font-medium transition-all duration-200 select-none cursor-pointer;
+  }
+  .chip-idle {
+    @apply border-cream-300 bg-white text-coffee-600 hover:border-coffee-200 hover:bg-cream-50 shadow-sm;
+  }
+  .chip-active {
+    @apply border-coffee-600 bg-coffee-600 text-cream-50 shadow-marker;
+  }
+}
+
+/* 지도 마커 진입 애니메이션 stagger */
+.marker-enter {
+  animation: pop-in 0.3s ease-out both;
+}
+
+@keyframes pop-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.7) translateY(6px);
+  }
+  70% {
+    transform: scale(1.05) translateY(0);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
