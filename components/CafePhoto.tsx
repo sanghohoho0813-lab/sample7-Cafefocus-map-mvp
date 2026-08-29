@@ -1,39 +1,51 @@
-import { Coffee } from "lucide-react";
+import Image from "next/image";
 import type { Cafe } from "@/lib/types";
 
 /**
- * 카페 사진 자리. 실제 이미지는 /public/images/cafes/{id}.jpg 로 추후 교체.
- * 지금은 카페별 고유 그라디언트 + 패턴으로 완성된 카드 비율을 유지한다.
+ * 카페 사진.
+ * - variant "wide": 16:9 원본(1440x810) — 상세 Hero용
+ * - variant "card": 4:3 축소본(720x540) — 리스트/썸네일용
+ * 컨테이너가 크기를 정하고 이미지는 object-cover로 채운다.
  */
 export default function CafePhoto({
   cafe,
   className = "",
-  iconSize = 28,
+  variant = "card",
+  sizes = "(max-width: 768px) 100vw, 400px",
+  priority = false,
+  overlay = true,
 }: {
   cafe: Cafe;
   className?: string;
-  iconSize?: number;
+  variant?: "card" | "wide";
+  sizes?: string;
+  priority?: boolean;
+  overlay?: boolean;
 }) {
   const [from, to] = cafe.gradient;
+  const src =
+    variant === "wide"
+      ? `/images/cafes/${cafe.id}.webp`
+      : `/images/cafes/${cafe.id}-card.webp`;
+
   return (
     <div
       className={`relative overflow-hidden ${className}`}
       style={{ background: `linear-gradient(135deg, ${from} 0%, ${to} 100%)` }}
-      role="img"
-      aria-label={`${cafe.name} 사진`}
     >
-      {/* 은은한 창문 패턴 */}
-      <div
-        className="absolute inset-0 opacity-[0.14]"
-        style={{
-          backgroundImage:
-            "repeating-linear-gradient(90deg, rgba(255,255,255,0.9) 0 1px, transparent 1px 26px), repeating-linear-gradient(0deg, rgba(255,255,255,0.9) 0 1px, transparent 1px 26px)",
-        }}
+      <Image
+        src={src}
+        alt={`${cafe.name} 내부 사진`}
+        fill
+        sizes={sizes}
+        placeholder="blur"
+        blurDataURL={cafe.blurDataURL}
+        priority={priority}
+        className="object-cover"
       />
-      <div className="absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-white/10" />
-      <div className="absolute inset-0 flex items-center justify-center text-white/40">
-        <Coffee size={iconSize} strokeWidth={1.6} />
-      </div>
+      {overlay && (
+        <div className="absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-transparent" />
+      )}
     </div>
   );
 }

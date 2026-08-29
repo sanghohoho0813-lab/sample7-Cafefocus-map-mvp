@@ -48,5 +48,21 @@ supabase/schema.sql  실데이터 전환용 스키마 (users/cafes/cafe_metrics/
 
 Next.js 15 · TypeScript · Tailwind CSS · Lucide Icons · (지도/데이터: Demo Layer, 추후 Mapbox·Supabase 전환 구조)
 
-카페 사진은 추후 `/public/images/cafes/{id}.jpg` 로 교체 예정이며,
-현재는 카페별 고유 그라디언트 플레이스홀더로 카드 비율을 유지합니다.
+## 카페 사진
+
+카페 22곳의 실사진이 `/public/images/cafes/` 에 포함되어 있습니다.
+
+| 파일 | 크기 | 용도 |
+| --- | --- | --- |
+| `{id}.webp` | 1440×810 (16:9) | 상세 Hero |
+| `{id}-card.webp` | 720×540 (4:3) | 리스트 카드·썸네일 |
+
+`next/image`로 서빙하며, 로딩 중에는 원본에서 생성한 blur placeholder
+(`lib/data/cafes.ts`의 `BLUR` 맵)가 표시됩니다. 전체 22곳 44장 합계 약 3.5MB입니다.
+
+사진을 교체할 때는 원본 파일명을 카페 id와 맞춘 뒤 아래를 실행하고,
+출력된 blur 맵을 `lib/data/cafes.ts`의 `BLUR`에 반영하세요.
+
+```bash
+node scripts/optimize-images.js <원본디렉터리>
+```

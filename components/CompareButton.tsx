@@ -7,9 +7,12 @@ import { getCafe } from "@/lib/data/cafes";
 export default function CompareButton({
   cafeId,
   variant = "chip",
+  compact = false,
 }: {
   cafeId: string;
   variant?: "chip" | "block";
+  /** 좁은 카드에서 라벨을 숨기고 아이콘만 보여준다 */
+  compact?: boolean;
 }) {
   const { inCompare, toggleCompare, showToast, hydrated, compare } = useApp();
   const active = hydrated && inCompare(cafeId);
@@ -48,15 +51,19 @@ export default function CompareButton({
   return (
     <button
       onClick={handle}
-      className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1.5 text-[11.5px] font-semibold transition-all duration-200 active:scale-95 ${
+      className={`inline-flex items-center justify-center gap-1 rounded-full border text-[11.5px] font-semibold transition-all duration-200 active:scale-95 ${
+        compact ? "h-8 w-8" : "px-2.5 py-1.5"
+      } ${
         active
           ? "border-forest-500 bg-forest-50 text-forest-700"
           : "border-cream-300 bg-white/90 text-coffee-500 hover:border-coffee-300"
       }`}
       aria-pressed={active}
+      aria-label={active ? "비교함에서 빼기" : "비교 담기"}
+      title={active ? "비교함에서 빼기" : "비교 담기"}
     >
-      {active ? <Check size={12} /> : <Scale size={12} />}
-      비교
+      {active ? <Check size={compact ? 14 : 12} /> : <Scale size={compact ? 14 : 12} />}
+      {!compact && "비교"}
     </button>
   );
 }

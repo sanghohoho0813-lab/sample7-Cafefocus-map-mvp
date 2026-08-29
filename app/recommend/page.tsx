@@ -234,7 +234,7 @@ export default function RecommendPage() {
                 >
                   <Link href={`/cafe/${r.cafe.id}`} className="flex gap-3.5 p-3.5">
                     <div className="relative shrink-0">
-                      <CafePhoto cafe={r.cafe} className="h-24 w-24 rounded-xl" iconSize={22} />
+                      <CafePhoto cafe={r.cafe} className="h-24 w-24 rounded-xl" sizes="96px" />
                       <span
                         className={`absolute -left-1.5 -top-1.5 flex h-7 w-7 items-center justify-center rounded-full text-[12px] font-bold text-white shadow-marker ${
                           i === 0 ? "bg-forest-600" : "bg-coffee-500"

@@ -132,7 +132,11 @@ export default function ComparePage() {
                     }`}
                   >
                     <div className="relative">
-                      <CafePhoto cafe={cafe} className="aspect-[4/3] w-full" iconSize={24} />
+                      <CafePhoto
+                        cafe={cafe}
+                        className="aspect-[4/3] w-full"
+                        sizes="(max-width: 768px) 50vw, 300px"
+                      />
                       <button
                         onClick={() => toggleCompare(cafe.id)}
                         className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-white/90 text-coffee-500 shadow-card transition-transform active:scale-90"

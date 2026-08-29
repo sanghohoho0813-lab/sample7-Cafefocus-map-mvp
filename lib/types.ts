@@ -73,7 +73,10 @@ export interface Cafe {
     laptopFriendly: boolean;
     bigTable: boolean;
   };
+  /** 이미지 로딩 전 배경 (사진 톤과 맞춘 값) */
   gradient: [string, string];
+  /** next/image blur placeholder (원본에서 생성한 12x7 WebP) */
+  blurDataURL: string;
   reviews: Review[];
 }
 

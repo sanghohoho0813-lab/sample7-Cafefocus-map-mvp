@@ -72,7 +72,11 @@ export default function CafeCard({
         }`}
       >
         <div className="relative">
-          <CafePhoto cafe={cafe} className="aspect-[4/3] w-full" />
+          <CafePhoto
+            cafe={cafe}
+            className="aspect-[4/3] w-full"
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 360px"
+          />
           <div className="absolute right-2.5 top-2.5 flex h-12 w-12 flex-col items-center justify-center rounded-full bg-white/95 shadow-card backdrop-blur">
             <span className="text-[16px] font-bold leading-none text-coffee-800">
               {score}
@@ -118,7 +122,7 @@ export default function CafeCard({
     >
       <Link href={`/cafe/${cafe.id}`} className="flex gap-3">
         <div className="relative shrink-0">
-          <CafePhoto cafe={cafe} className="h-24 w-24 rounded-xl" iconSize={22} />
+          <CafePhoto cafe={cafe} className="h-24 w-24 rounded-xl" sizes="96px" />
           <span
             className={`absolute -bottom-1.5 -right-1.5 flex h-9 w-9 items-center justify-center rounded-full border-2 border-white text-[13px] font-bold text-white ${scoreBgClass(score)}`}
             aria-label={`작업점수 ${score}점`}
@@ -127,7 +131,7 @@ export default function CafeCard({
           </span>
         </div>
         <div className="min-w-0 flex-1 space-y-1.5">
-          <div className="flex items-start justify-between gap-2 pr-[104px]">
+          <div className="flex items-start justify-between gap-2 pr-[76px]">
             <div className="min-w-0">
               <h3 className="truncate text-[14.5px] font-bold text-coffee-800">
                 {cafe.name}
@@ -163,7 +167,7 @@ export default function CafeCard({
         </div>
       </Link>
       <div className="absolute right-3 top-3 flex items-center gap-1.5">
-        <CompareButton cafeId={cafe.id} />
+        <CompareButton cafeId={cafe.id} compact />
         <FavoriteButton cafeId={cafe.id} size="sm" />
       </div>
     </div>

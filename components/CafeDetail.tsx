@@ -93,8 +93,10 @@ export default function CafeDetail({ cafe }: { cafe: Cafe }) {
         <div className="relative">
           <CafePhoto
             cafe={cafe}
+            variant="wide"
+            priority
             className="aspect-[16/9] w-full sm:rounded-3xl md:aspect-[21/9]"
-            iconSize={44}
+            sizes="(max-width: 1024px) 100vw, 1024px"
           />
           <button
             onClick={() => router.back()}

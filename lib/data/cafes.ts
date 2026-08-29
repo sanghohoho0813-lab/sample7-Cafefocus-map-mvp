@@ -151,6 +151,35 @@ function pickReviews(id: string, metrics: CafeMetrics): Review[] {
   return out;
 }
 
+/* ---------------- 이미지 blur placeholder ----------------
+ * /public/images/cafes/{id}.webp 원본에서 생성한 12x7 축소본.
+ * 사진 교체 시 scripts/optimize-images.js 로 함께 갱신한다.
+ */
+const BLUR: Record<string, string> = {
+  "archive-cafe": "data:image/webp;base64,UklGRkoAAABXRUJQVlA4ID4AAACwAQCdASoMAAcAA4BaJQBOgCHhTHcYAP7mtSbbseESZwf/kuElnQwgC43e4XmV798uNSed29aYalWQ4gAAAA==",
+  "atelier-coffee": "data:image/webp;base64,UklGRkgAAABXRUJQVlA4IDwAAADwAQCdASoMAAcAA4BaJYgCdADdR+fS0eAA8qErz00zmLHYlJf1DzL2sx5Nf1IiYKBrVOVObvZd9fIAAAA=",
+  "brick-coffee": "data:image/webp;base64,UklGRk4AAABXRUJQVlA4IEIAAACwAQCdASoMAAcAA4BaJZACdADZlN2AAP6KHfpwJ8Rldvd2S+xn3qDMQdVL2zYESA8ZvsitUrJgmO/GaLth4/gAAAA=",
+  "cafe-masil": "data:image/webp;base64,UklGRk4AAABXRUJQVlA4IEIAAADQAQCdASoMAAcAA4BaJYgCdAD0cjJaAAD+3bsRowo/miLNEQg9P46IPytgndPHVfkakQuGpdCRi5JSkUU6EWCAAAA=",
+  "cafe-morrow": "data:image/webp;base64,UklGRkwAAABXRUJQVlA4IEAAAADQAQCdASoMAAcAA4BaJQBOgCBUGQpUAAD+8yuMhl1M25LmKI5i2fj2xgni/grG3pb8HsEYtkO8+R99vQ6QoAAA",
+  "coffee-plant": "data:image/webp;base64,UklGRlAAAABXRUJQVlA4IEQAAADwAQCdASoMAAcAA4BaJQBdgCHedG+iOoAA/u9k8PWgo1ZbqKNy4nkzGQlf62H9U8r/3u2K4MuMPURoKTerbIGx9AFgAA==",
+  "deep-work-lounge": "data:image/webp;base64,UklGRkAAAABXRUJQVlA4IDQAAADQAQCdASoMAAcAA4BaJYwCdADy+CWZAAD+8tF87PjKdrdQ+vK2Y/SlkOTOCFL0y/tcFagA",
+  "gwanghwamun-page": "data:image/webp;base64,UklGRk4AAABXRUJQVlA4IEIAAAAQAgCdASoMAAcAA4BaJQBOj+ADGFWYZc4AAP7CN0X5UvCoeKpVogI+fMCrTcP1AnQAKPeXBt7fx9IorAZfO3dnIAA=",
+  "hanok-desk": "data:image/webp;base64,UklGRlIAAABXRUJQVlA4IEYAAACwAQCdASoMAAcAA4BaJZACdADyf/xoAP7s269E1hCg0JC/QmK8bFjQYyEB4zbAWw9ov1TDso8rAsPQ0tFtiHSWvFNqAAAA",
+  "hapjeong-craft": "data:image/webp;base64,UklGRkwAAABXRUJQVlA4IEAAAADwAQCdASoMAAcAA4BaJZQCdADc+a6+dQAA/tKIzyPHh18OPT382hyoYmj51zaPt4WetNfWqqYwhZTAGpszMAAA",
+  "ikseon-slow": "data:image/webp;base64,UklGRlIAAABXRUJQVlA4IEYAAADQAQCdASoMAAcAA4BaJZgCdADPlJQcQAD+3gh/dIJ8XjsNiJyNM8YLO8COro4P1BQq0R4fl0Wpn/7bqGItuqmbKCKjYAAA",
+  "lake-view-work": "data:image/webp;base64,UklGRkwAAABXRUJQVlA4IEAAAADwAQCdASoMAAcAA4BaJYwCdAEMzNfTuAAA/sFqOmQWAl2Yv2mWC2AfhpD9a5tp2mlmABpKisCIs4gwh/qcyAAA",
+  "local-stitch": "data:image/webp;base64,UklGRlIAAABXRUJQVlA4IEYAAADwAQCdASoMAAcAA4BaJaACdADcq6NtSAAA/I++u7AQhy4gpJt53FGvbRTfluIOiexs5kxIgBnqGWBNpFHiNRe1qIZOuAAA",
+  "mangwon-workshop": "data:image/webp;base64,UklGRlQAAABXRUJQVlA4IEgAAADQAQCdASoMAAcAA4BaJQBOgBulwXxnAAD+4+E270uUNCp53gNm3OMLh3Bu/Sw4Qivf/wM+YEymKMnYWzumQjph0owBeLgAAAA=",
+  "monday-roast": "data:image/webp;base64,UklGRlwAAABXRUJQVlA4IFAAAAAQAgCdASoMAAcAA4BaJbACdAECpmF98+NgAP4BlDosiosbn+h//EmQTFbCbywJCxFOXnumeYUDmjroOkbmvrUqwwgC8WS+uFMawALgKYAAAA==",
+  "onion-yeonnam": "data:image/webp;base64,UklGRk4AAABXRUJQVlA4IEIAAADwAQCdASoMAAcAA4BaJYwCdADp6R/v46AA/u6pZTA/JwYoyi7hpGc0vJhsebHtXSPdN+YQtUqRelVPQIuf4HoAAAA=",
+  "quiet-quarter": "data:image/webp;base64,UklGRlwAAABXRUJQVlA4IFAAAADwAQCdASoMAAcAA4BaJZACdAEOgO4Zp0AA/rdwltSb1IfZERm5NuaReaxwAxQkTLA2ZyiFuQvvh1oWEbzHsss2xItaVTZ5b8LtBhZe3cAAAA==",
+  "riverside-roast": "data:image/webp;base64,UklGRlYAAABXRUJQVlA4IEoAAADQAQCdASoMAAcAA4BaJZQC7ADyghf2YAD94zP1EPhiqHS8cuLvI1ZG0BKILu/PJByT3LmsPaCJif+8rYhZcmhfcz7+iiFfB7U4AA==",
+  "slow-bean": "data:image/webp;base64,UklGRlYAAABXRUJQVlA4IEoAAADwAQCdASoMAAcAA4BaJYgCdAD1fUUKM8AA/ulRjxzUmItr3kpzfYbs4GY936aoWk2tuTa/Uky288n0gdjanCwwj9rYMtucaAAAAA==",
+  "study-hub-jamsil": "data:image/webp;base64,UklGRlwAAABXRUJQVlA4IFAAAADQAQCdASoMAAcAA4BaJQBOgBuRBozXWAD5YgsA08w7VM2WrNWkGoET19b6FtLfvL8Qi3+xyPMR0W8K12hdJAV7Qg7uv4+xtimuUJxZNwAAAA==",
+  "sunday-desk": "data:image/webp;base64,UklGRkAAAABXRUJQVlA4IDQAAADwAQCdASoMAAcAA4BaJZQCdAEO98sRsiAA/ve9fwfW4MgT8Or0VAqgT12UDKO+eHi4sMAA",
+  "workroom-17": "data:image/webp;base64,UklGRlQAAABXRUJQVlA4IEgAAADQAQCdASoMAAcAA4BaJYwCdACnwOp6QADOMaXa4C3MDRg0/JLQEcfKt8NQ0eFpTHgWcv99S9HlWBMYysL4Yw9AEew0n2cAAAA=",
+};
+
 /* ---------------- 카페 정의 ---------------- */
 
 interface CafeSeed {
@@ -451,6 +480,7 @@ function buildCafe(seed: CafeSeed): Cafe {
     description: seed.description,
     amenities: seed.amenities,
     gradient: seed.gradient,
+    blurDataURL: BLUR[seed.id] ?? BLUR["cafe-morrow"],
     reviews: pickReviews(seed.id, seed.metrics),
   };
 }

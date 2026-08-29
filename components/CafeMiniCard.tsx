@@ -38,26 +38,24 @@ export default function CafeMiniCard({
 
   return (
     <div
-      className="w-[300px] overflow-hidden rounded-2xl border border-cream-200 bg-white shadow-card-lg animate-fade-up"
+      className="relative w-[330px] overflow-hidden rounded-2xl border border-cream-200 bg-white shadow-card-lg animate-fade-up"
       onClick={(e) => e.stopPropagation()}
     >
+      {onClose && (
+        <button
+          onClick={onClose}
+          className="absolute right-2 top-2 z-10 rounded-full bg-white/80 p-1 text-coffee-300 backdrop-blur transition-colors hover:bg-cream-100 hover:text-coffee-600"
+          aria-label="닫기"
+        >
+          <X size={14} />
+        </button>
+      )}
       <div className="flex items-center gap-3 p-3">
-        <CafePhoto cafe={cafe} className="h-16 w-16 shrink-0 rounded-xl" iconSize={20} />
+        <CafePhoto cafe={cafe} className="h-16 w-16 shrink-0 rounded-xl" sizes="64px" />
         <div className="min-w-0 flex-1">
-          <div className="flex items-center justify-between gap-2">
-            <h3 className="truncate text-[14.5px] font-bold text-coffee-800">
-              {cafe.name}
-            </h3>
-            {onClose && (
-              <button
-                onClick={onClose}
-                className="shrink-0 rounded-full p-1 text-coffee-300 transition-colors hover:bg-cream-100 hover:text-coffee-600"
-                aria-label="닫기"
-              >
-                <X size={14} />
-              </button>
-            )}
-          </div>
+          <h3 className="truncate pr-6 text-[14.5px] font-bold text-coffee-800">
+            {cafe.name}
+          </h3>
           <div className="mt-0.5 flex items-center gap-1 text-[11.5px] text-coffee-400">
             <Star size={10.5} className="fill-amber2-400 text-amber2-400" />
             <b className="text-coffee-600">{cafe.rating.toFixed(1)}</b>
