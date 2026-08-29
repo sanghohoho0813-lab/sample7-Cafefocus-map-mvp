@@ -14,6 +14,9 @@ body {
 body {
   @apply bg-cream-100 text-coffee-800 font-sans antialiased;
   overflow-x: hidden;
+  /* 한글이 단어 중간에서 끊기지 않도록 어절 단위로 줄바꿈 */
+  word-break: keep-all;
+  overflow-wrap: break-word;
 }
 
 /* 스크롤바 - 데스크톱에서 은은하게 */

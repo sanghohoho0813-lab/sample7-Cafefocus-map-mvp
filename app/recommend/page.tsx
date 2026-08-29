@@ -50,14 +50,14 @@ export default function RecommendPage() {
     <div className="h-full overflow-y-auto">
       <div className="mx-auto max-w-2xl px-4 py-5 pb-10 lg:py-8">
         <div className="text-center">
-          <div className="inline-flex items-center gap-1.5 rounded-full bg-forest-50 px-3 py-1 text-[12px] font-semibold text-forest-700">
-            <Sparkles size={13} />
+          <div className="inline-flex items-center gap-1.5 rounded-full bg-forest-50 px-3 py-1 text-[15.5px] font-semibold text-forest-700">
+            <Sparkles size={16.5} />
             맞춤 추천
           </div>
-          <h1 className="mt-2 text-[21px] font-bold text-coffee-800">
+          <h1 className="mt-2 text-[27.5px] font-bold text-coffee-800">
             내게 맞는 카페 찾기
           </h1>
-          <p className="mt-1 text-[13px] text-coffee-400">
+          <p className="mt-1 text-[17px] text-coffee-400">
             맛있는 커피보다 오늘은 조용한 자리가 더 중요하니까.
           </p>
         </div>
@@ -68,7 +68,7 @@ export default function RecommendPage() {
             {stepLabels.map((label, i) => (
               <div key={label} className="flex items-center gap-2">
                 <div
-                  className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold transition-colors ${
+                  className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[15.5px] font-semibold transition-colors ${
                     i === step
                       ? "bg-coffee-700 text-cream-50"
                       : i < step
@@ -88,7 +88,7 @@ export default function RecommendPage() {
         {/* Step 1: 목적 */}
         {step === 0 && (
           <div className="mt-6 space-y-2.5 animate-fade-up">
-            <h2 className="text-[15px] font-bold text-coffee-800">
+            <h2 className="text-[19.5px] font-bold text-coffee-800">
               오늘은 어떤 작업을 하시나요?
             </h2>
             {PURPOSES.map((p) => (
@@ -102,12 +102,12 @@ export default function RecommendPage() {
                 }`}
                 aria-pressed={purpose === p.key}
               >
-                <span className="text-[22px]">{p.emoji}</span>
+                <span className="text-[28.5px]">{p.emoji}</span>
                 <span>
-                  <span className="block text-[14.5px] font-bold text-coffee-800">
+                  <span className="block text-[19px] font-bold text-coffee-800">
                     {p.label}
                   </span>
-                  <span className="text-[12.5px] text-coffee-400">{p.desc}</span>
+                  <span className="text-[16.5px] text-coffee-400">{p.desc}</span>
                 </span>
               </button>
             ))}
@@ -115,9 +115,9 @@ export default function RecommendPage() {
               <button
                 onClick={() => purpose && setStep(1)}
                 disabled={!purpose}
-                className="flex items-center gap-1.5 rounded-full bg-coffee-700 px-5 py-2.5 text-[13.5px] font-semibold text-cream-50 transition-all enabled:hover:bg-coffee-600 disabled:opacity-40"
+                className="flex items-center gap-1.5 rounded-full bg-coffee-700 px-5 py-2.5 text-[17.5px] font-semibold text-cream-50 transition-all enabled:hover:bg-coffee-600 disabled:opacity-40"
               >
-                다음 <ArrowRight size={15} />
+                다음 <ArrowRight size={19} />
               </button>
             </div>
           </div>
@@ -126,9 +126,9 @@ export default function RecommendPage() {
         {/* Step 2: 우선순위 */}
         {step === 1 && (
           <div className="mt-6 space-y-3 animate-fade-up">
-            <h2 className="text-[15px] font-bold text-coffee-800">
+            <h2 className="text-[19.5px] font-bold text-coffee-800">
               특히 중요한 요소를 골라주세요{" "}
-              <span className="text-[12px] font-medium text-coffee-400">(최대 3개)</span>
+              <span className="text-[15.5px] font-medium text-coffee-400">(최대 3개)</span>
             </h2>
             <div className="flex flex-wrap gap-2">
               {PRIORITIES.map((p) => {
@@ -145,7 +145,7 @@ export default function RecommendPage() {
                             : [...prev, p.key]
                       )
                     }
-                    className={`chip px-4 py-2.5 text-[14px] ${on ? "chip-active" : "chip-idle"}`}
+                    className={`chip px-4 py-2.5 text-[18px] ${on ? "chip-active" : "chip-idle"}`}
                     aria-pressed={on}
                   >
                     {p.label}
@@ -156,15 +156,15 @@ export default function RecommendPage() {
             <div className="flex justify-between pt-2">
               <button
                 onClick={() => setStep(0)}
-                className="flex items-center gap-1.5 rounded-full border border-cream-300 bg-white px-5 py-2.5 text-[13.5px] font-semibold text-coffee-600 transition-colors hover:border-coffee-300"
+                className="flex items-center gap-1.5 rounded-full border border-cream-300 bg-white px-5 py-2.5 text-[17.5px] font-semibold text-coffee-600 transition-colors hover:border-coffee-300"
               >
-                <ArrowLeft size={15} /> 이전
+                <ArrowLeft size={19} /> 이전
               </button>
               <button
                 onClick={() => setStep(2)}
-                className="flex items-center gap-1.5 rounded-full bg-coffee-700 px-5 py-2.5 text-[13.5px] font-semibold text-cream-50 transition-colors hover:bg-coffee-600"
+                className="flex items-center gap-1.5 rounded-full bg-coffee-700 px-5 py-2.5 text-[17.5px] font-semibold text-cream-50 transition-colors hover:bg-coffee-600"
               >
-                다음 <ArrowRight size={15} />
+                다음 <ArrowRight size={19} />
               </button>
             </div>
           </div>
@@ -173,14 +173,14 @@ export default function RecommendPage() {
         {/* Step 3: 체류시간 */}
         {step === 2 && (
           <div className="mt-6 space-y-2.5 animate-fade-up">
-            <h2 className="text-[15px] font-bold text-coffee-800">
+            <h2 className="text-[19.5px] font-bold text-coffee-800">
               얼마나 머무를 예정인가요?
             </h2>
             {STAY_OPTIONS.map((s) => (
               <button
                 key={s.key}
                 onClick={() => setStay(s.key)}
-                className={`w-full rounded-2xl border bg-white p-4 text-left text-[14.5px] font-bold text-coffee-800 transition-all duration-200 hover:shadow-card ${
+                className={`w-full rounded-2xl border bg-white p-4 text-left text-[19px] font-bold text-coffee-800 transition-all duration-200 hover:shadow-card ${
                   stay === s.key
                     ? "border-coffee-600 ring-2 ring-coffee-600/15"
                     : "border-cream-200"
@@ -193,16 +193,16 @@ export default function RecommendPage() {
             <div className="flex justify-between pt-2">
               <button
                 onClick={() => setStep(1)}
-                className="flex items-center gap-1.5 rounded-full border border-cream-300 bg-white px-5 py-2.5 text-[13.5px] font-semibold text-coffee-600 transition-colors hover:border-coffee-300"
+                className="flex items-center gap-1.5 rounded-full border border-cream-300 bg-white px-5 py-2.5 text-[17.5px] font-semibold text-coffee-600 transition-colors hover:border-coffee-300"
               >
-                <ArrowLeft size={15} /> 이전
+                <ArrowLeft size={19} /> 이전
               </button>
               <button
                 onClick={run}
                 disabled={!stay}
-                className="flex items-center gap-1.5 rounded-full bg-forest-600 px-5 py-2.5 text-[13.5px] font-semibold text-white transition-all enabled:hover:bg-forest-700 disabled:opacity-40"
+                className="flex items-center gap-1.5 rounded-full bg-forest-600 px-5 py-2.5 text-[17.5px] font-semibold text-white transition-all enabled:hover:bg-forest-700 disabled:opacity-40"
               >
-                <Sparkles size={15} /> 추천 받기
+                <Sparkles size={19} /> 추천 받기
               </button>
             </div>
           </div>
@@ -212,14 +212,14 @@ export default function RecommendPage() {
         {step === 3 && results && (
           <div className="mt-6 space-y-3.5 animate-fade-up">
             <div className="flex items-center justify-between">
-              <h2 className="text-[15px] font-bold text-coffee-800">
+              <h2 className="text-[19.5px] font-bold text-coffee-800">
                 지금 {hour}시, 이 카페를 추천해요
               </h2>
               <button
                 onClick={reset}
-                className="flex items-center gap-1 text-[12.5px] font-semibold text-coffee-400 transition-colors hover:text-coffee-700"
+                className="flex items-center gap-1 text-[16.5px] font-semibold text-coffee-400 transition-colors hover:text-coffee-700"
               >
-                <RotateCcw size={13} /> 다시 하기
+                <RotateCcw size={16.5} /> 다시 하기
               </button>
             </div>
             {results.map((r, i) => {
@@ -236,27 +236,27 @@ export default function RecommendPage() {
                     <div className="relative shrink-0">
                       <CafePhoto cafe={r.cafe} className="h-24 w-24 rounded-xl" sizes="96px" />
                       <span
-                        className={`absolute -left-1.5 -top-1.5 flex h-7 w-7 items-center justify-center rounded-full text-[12px] font-bold text-white shadow-marker ${
+                        className={`absolute -left-1.5 -top-1.5 flex h-7 w-7 items-center justify-center rounded-full text-[15.5px] font-bold text-white shadow-marker ${
                           i === 0 ? "bg-forest-600" : "bg-coffee-500"
                         }`}
                       >
-                        {i === 0 ? <Crown size={13} /> : i + 1}
+                        {i === 0 ? <Crown size={16.5} /> : i + 1}
                       </span>
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
-                          <h3 className="truncate text-[15px] font-bold text-coffee-800">
+                          <h3 className="truncate text-[19.5px] font-bold text-coffee-800">
                             {r.cafe.name}
                           </h3>
-                          <div className="mt-0.5 flex items-center gap-1 text-[11.5px] text-coffee-400">
-                            <Star size={10.5} className="fill-amber2-400 text-amber2-400" />
+                          <div className="mt-0.5 flex items-center gap-1 text-[15px] text-coffee-400">
+                            <Star size={13} className="fill-amber2-400 text-amber2-400" />
                             {r.cafe.rating.toFixed(1)} · {AREA_MAP[r.cafe.area].name} ·{" "}
                             평균 {formatStay(r.cafe.avgStayMinutes)} ·{" "}
                             {CROWD_LABEL[crowdLv]}
                           </div>
                         </div>
-                        <WorkScoreRing score={r.score} size={54} label="적합도" animate={i === 0} />
+                        <WorkScoreRing score={r.score} size={67.5} label="적합도" animate={i === 0} />
                       </div>
                       <div className="mt-2 flex flex-wrap gap-1.5">
                         {r.reasons.map((reason) => (
@@ -268,7 +268,7 @@ export default function RecommendPage() {
                   <div className="flex items-center gap-2 border-t border-cream-100 px-3.5 py-2.5">
                     <Link
                       href={`/cafe/${r.cafe.id}`}
-                      className="flex-1 rounded-xl bg-coffee-700 py-2 text-center text-[12.5px] font-semibold text-cream-50 transition-colors hover:bg-coffee-600"
+                      className="flex-1 rounded-xl bg-coffee-700 py-2 text-center text-[16.5px] font-semibold text-cream-50 transition-colors hover:bg-coffee-600"
                     >
                       상세 보기
                     </Link>

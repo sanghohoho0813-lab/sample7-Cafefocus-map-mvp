@@ -16,6 +16,7 @@ import {
   NOISE_LABEL,
   CROWD_LABEL,
 } from "@/lib/scoring";
+import { METRIC_ICON } from "@/lib/icon-colors";
 import CafePhoto from "@/components/CafePhoto";
 import FavoriteButton from "@/components/FavoriteButton";
 import CompareButton from "@/components/CompareButton";
@@ -78,23 +79,23 @@ export default function CafeCard({
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 360px"
           />
           <div className="absolute right-2.5 top-2.5 flex h-12 w-12 flex-col items-center justify-center rounded-full bg-white/95 shadow-card backdrop-blur">
-            <span className="text-[16px] font-bold leading-none text-coffee-800">
+            <span className="text-[21px] font-bold leading-none text-coffee-800">
               {score}
             </span>
-            <span className="text-[8.5px] text-coffee-400">작업점수</span>
+            <span className="text-[11px] text-coffee-400">작업점수</span>
           </div>
           <FavoriteButton cafeId={cafe.id} size="sm" className="absolute left-2.5 top-2.5" />
           {!open && (
-            <span className="absolute bottom-2.5 left-2.5 rounded-md bg-coffee-800/85 px-2 py-1 text-[10.5px] font-medium text-cream-100">
+            <span className="absolute bottom-2.5 left-2.5 rounded-md bg-coffee-800/85 px-2 py-1 text-[13.5px] font-medium text-cream-100">
               영업 종료
             </span>
           )}
         </div>
         <div className="space-y-2 p-3.5">
           <div>
-            <h3 className="text-[15px] font-bold text-coffee-800">{cafe.name}</h3>
-            <div className="mt-0.5 flex items-center gap-1.5 text-[12px] text-coffee-400">
-              <Star size={11.5} className="fill-amber2-400 text-amber2-400" />
+            <h3 className="text-[19.5px] font-bold text-coffee-800">{cafe.name}</h3>
+            <div className="mt-0.5 flex items-center gap-1.5 text-[15.5px] text-coffee-400">
+              <Star size={14.5} className="fill-amber2-400 text-amber2-400" />
               <span className="font-semibold text-coffee-600">{cafe.rating.toFixed(1)}</span>
               <span>({cafe.reviewCount})</span>
               <span>·</span>
@@ -103,7 +104,7 @@ export default function CafeCard({
               <span>{dist}</span>
             </div>
           </div>
-          <p className="line-clamp-2 text-[12.5px] leading-relaxed text-coffee-500">
+          <p className="line-clamp-2 text-[16.5px] leading-relaxed text-coffee-500">
             {cafe.description}
           </p>
           {badges}
@@ -124,7 +125,7 @@ export default function CafeCard({
         <div className="relative shrink-0">
           <CafePhoto cafe={cafe} className="h-24 w-24 rounded-xl" sizes="96px" />
           <span
-            className={`absolute -bottom-1.5 -right-1.5 flex h-9 w-9 items-center justify-center rounded-full border-2 border-white text-[13px] font-bold text-white ${scoreBgClass(score)}`}
+            className={`absolute -bottom-1.5 -right-1.5 flex h-9 w-9 items-center justify-center rounded-full border-2 border-white text-[17px] font-bold text-white ${scoreBgClass(score)}`}
             aria-label={`작업점수 ${score}점`}
           >
             {score}
@@ -133,29 +134,29 @@ export default function CafeCard({
         <div className="min-w-0 flex-1 space-y-1.5">
           <div className="flex items-start justify-between gap-2 pr-[76px]">
             <div className="min-w-0">
-              <h3 className="truncate text-[14.5px] font-bold text-coffee-800">
+              <h3 className="truncate text-[19px] font-bold text-coffee-800">
                 {cafe.name}
               </h3>
-              <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-[11.5px] text-coffee-400">
+              <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-[15px] text-coffee-400">
                 <span className="inline-flex items-center gap-0.5">
-                  <Star size={10.5} className="fill-amber2-400 text-amber2-400" />
+                  <Star size={13} className="fill-amber2-400 text-amber2-400" />
                   <b className="text-coffee-600">{cafe.rating.toFixed(1)}</b>
                 </span>
                 <span>·</span>
                 <span className="inline-flex items-center gap-0.5">
-                  <MapPin size={10.5} />
+                  <MapPin size={13} className={METRIC_ICON.location} />
                   {AREA_MAP[cafe.area].name} {dist}
                 </span>
                 <span>·</span>
                 <span className="inline-flex items-center gap-0.5">
-                  <Clock size={10.5} />
+                  <Clock size={13} className={METRIC_ICON.clock} />
                   평균 {formatStay(cafe.avgStayMinutes)}
                 </span>
               </div>
             </div>
           </div>
           {badges}
-          <div className="flex items-center gap-1.5 text-[11.5px]">
+          <div className="flex items-center gap-1.5 text-[15px]">
             <span className={open ? "font-semibold text-forest-600" : "font-semibold text-coffee-300"}>
               {open ? "영업 중" : "영업 종료"}
             </span>

@@ -13,7 +13,7 @@ export default function MetricBadge({
         : "bg-cream-100 text-coffee-500 border-cream-200";
   return (
     <span
-      className={`inline-flex items-center whitespace-nowrap rounded-md border px-2 py-1 text-[11px] font-medium ${cls}`}
+      className={`inline-flex items-center whitespace-nowrap rounded-md border px-2 py-1 text-[14.5px] font-medium ${cls}`}
     >
       {label}
     </span>

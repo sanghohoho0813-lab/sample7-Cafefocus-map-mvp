@@ -12,6 +12,7 @@ import CafeCard from "@/components/CafeCard";
 import CafeMiniCard from "@/components/CafeMiniCard";
 import FilterChips from "@/components/FilterChips";
 import SearchBox from "@/components/SearchBox";
+import LiveClock from "@/components/LiveClock";
 import MobileBottomSheet, { type SheetState } from "@/components/MobileBottomSheet";
 import EmptyState from "@/components/EmptyState";
 import { useApp } from "@/lib/store";
@@ -34,18 +35,23 @@ function CardSkeleton() {
 
 export default function HomePage() {
   const { addRecent } = useApp();
-  const [area, setArea] = useState<AreaKey | null>("seongsu");
+  // 첫 화면에서는 전체 지역의 카페를 모두 보여준다.
+  const [area, setArea] = useState<AreaKey | null>(null);
   const [filters, setFilters] = useState<FilterKey[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [hour, setHour] = useState(15);
+  // 실제 현재 시각(시). 정적 프리렌더 HTML과 어긋나지 않도록 마운트 후에 채운다.
+  const [nowHour, setNowHour] = useState(15);
   const [isNow, setIsNow] = useState(true);
   const [sheet, setSheet] = useState<SheetState>("collapsed");
   const [ready, setReady] = useState(false);
   const [areaOpen, setAreaOpen] = useState(false);
 
   useEffect(() => {
-    setHour(demoHour(new Date()));
+    const h = demoHour(new Date());
+    setHour(h);
+    setNowHour(h);
     const t = window.setTimeout(() => setReady(true), 550);
     return () => window.clearTimeout(t);
   }, []);
@@ -93,7 +99,14 @@ export default function HomePage() {
   return (
     <div className="flex h-full flex-col">
       {/* ---- 상단 컨트롤 바 ---- */}
-      <div className="z-40 shrink-0 space-y-2.5 border-b border-cream-200 bg-cream-50/95 px-3 pb-2.5 pt-3 backdrop-blur lg:px-5 lg:pt-4">
+      <div className="z-40 shrink-0 space-y-2.5 border-b border-cream-200 bg-cream-50/95 px-3 pb-2.5 pt-2.5 backdrop-blur lg:px-5 lg:pt-3">
+        {/* 오늘 날짜 · 실시간 시각 (xl 미만에서는 이 줄에 표시) */}
+        <div className="flex items-center justify-between gap-2 xl:hidden">
+          <LiveClock />
+          <span className="hidden truncate text-[14.5px] font-medium text-coffee-400 sm:block">
+            지금 일하기 좋은 카페를 찾아보세요.
+          </span>
+        </div>
         <div className="flex items-center gap-2">
           <SearchBox
             onSelectArea={(k) => {
@@ -107,12 +120,12 @@ export default function HomePage() {
           <div className="relative shrink-0">
             <button
               onClick={() => setAreaOpen((v) => !v)}
-              className="flex items-center gap-1.5 rounded-full border border-cream-300 bg-white px-3.5 py-2.5 text-[13px] font-semibold text-coffee-700 shadow-sm transition-colors hover:border-coffee-300"
+              className="flex items-center gap-1.5 rounded-full border border-cream-300 bg-white px-3.5 py-2.5 text-[17px] font-semibold text-coffee-700 shadow-sm transition-colors hover:border-coffee-300"
               aria-haspopup="listbox"
               aria-expanded={areaOpen}
             >
               {areaLabel}
-              <ChevronDown size={14} className={`transition-transform ${areaOpen ? "rotate-180" : ""}`} />
+              <ChevronDown size={17.5} className={`transition-transform ${areaOpen ? "rotate-180" : ""}`} />
             </button>
             {areaOpen && (
               <div className="absolute right-0 top-full z-50 mt-2 w-40 rounded-2xl border border-cream-200 bg-white py-1.5 shadow-card-lg animate-fade-up" role="listbox">
@@ -122,7 +135,7 @@ export default function HomePage() {
                     setAreaOpen(false);
                     setSelectedId(null);
                   }}
-                  className={`block w-full px-4 py-2 text-left text-[13px] transition-colors hover:bg-cream-100 ${area === null ? "font-bold text-coffee-800" : "text-coffee-500"}`}
+                  className={`block w-full px-4 py-2 text-left text-[17px] transition-colors hover:bg-cream-100 ${area === null ? "font-bold text-coffee-800" : "text-coffee-500"}`}
                 >
                   모든 지역
                 </button>
@@ -134,30 +147,32 @@ export default function HomePage() {
                       setAreaOpen(false);
                       setSelectedId(null);
                     }}
-                    className={`block w-full px-4 py-2 text-left text-[13px] transition-colors hover:bg-cream-100 ${area === a.key ? "font-bold text-coffee-800" : "text-coffee-500"}`}
+                    className={`block w-full px-4 py-2 text-left text-[17px] transition-colors hover:bg-cream-100 ${area === a.key ? "font-bold text-coffee-800" : "text-coffee-500"}`}
                   >
                     {a.name}
-                    <span className="ml-1 text-[11px] text-coffee-300">{a.station}</span>
+                    <span className="ml-1 text-[14.5px] text-coffee-300">{a.station}</span>
                   </button>
                 ))}
               </div>
             )}
           </div>
+          {/* 오늘 날짜 · 실시간 시각 */}
+          <LiveClock className="hidden xl:flex" />
           {/* 시간대 선택 */}
-          <label className="hidden shrink-0 items-center gap-1.5 rounded-full border border-cream-300 bg-white px-3 py-2 text-[13px] font-semibold text-coffee-700 shadow-sm sm:flex">
-            <Clock size={13.5} className="text-coffee-400" />
+          <label className="hidden shrink-0 items-center gap-1.5 rounded-full border border-cream-300 bg-white px-3 py-2 text-[17px] font-semibold text-coffee-700 shadow-sm sm:flex">
+            <Clock size={17} className="text-violet-500" />
             <select
               value={hour}
               onChange={(e) => {
                 setHour(Number(e.target.value));
-                setIsNow(Number(e.target.value) === demoHour(new Date()));
+                setIsNow(Number(e.target.value) === nowHour);
               }}
               className="cursor-pointer bg-transparent outline-none"
               aria-label="기준 시간대"
             >
               {HOURS.map((h) => (
                 <option key={h} value={h}>
-                  {h === demoHour(new Date()) ? `지금 ${h}시` : `${h}시`}
+                  {h === nowHour ? `지금 ${h}시` : `${h}시`}
                 </option>
               ))}
             </select>
@@ -184,13 +199,17 @@ export default function HomePage() {
             area={area}
           >
             {/* 상태 배너 */}
-            <div className="pointer-events-none absolute left-3 top-3 z-20 hidden items-center gap-2 rounded-full border border-cream-200 bg-white/95 px-4 py-2 text-[12.5px] text-coffee-600 shadow-card backdrop-blur md:flex">
-              <Sparkles size={13} className="text-forest-500" />
+            <div className="pointer-events-none absolute left-3 top-3 z-20 hidden items-center gap-2 whitespace-nowrap rounded-full border border-cream-200 bg-white/95 px-4 py-2 text-[16.5px] text-coffee-600 shadow-card backdrop-blur md:flex">
+              <Sparkles size={16.5} className="shrink-0 text-forest-500" />
               <span>
-                <b className="text-coffee-800">{areaLabel}</b>
-                {isNow ? " · 지금" : ""} <b className="text-coffee-800">{hour}시</b> 기준, 작업하기 좋은 카페{" "}
+                {isNow ? "지금 " : ""}
+                <b className="text-coffee-800">{hour}시</b> · 작업 카페{" "}
                 <b className="text-forest-600">{visible.length}곳</b>
-                {quietCount > 0 && <> · 조용한 곳 {quietCount}곳</>}
+                {quietCount > 0 && (
+                  <>
+                    {" "}· 조용한 곳 <b className="text-forest-600">{quietCount}곳</b>
+                  </>
+                )}
               </span>
             </div>
 
@@ -206,14 +225,14 @@ export default function HomePage() {
           <MobileBottomSheet
             state={sheet}
             onStateChange={setSheet}
-            collapsedHeight={selected && sheet === "collapsed" ? "236px" : "132px"}
+            collapsedHeight={selected && sheet === "collapsed" ? "290px" : "148px"}
             header={
               <div className="flex items-center justify-between">
-                <span className="text-[13px] font-bold text-coffee-800">
+                <span className="text-[17px] font-bold text-coffee-800">
                   {areaLabel} 작업 카페 {visible.length}
                 </span>
-                <span className="flex items-center gap-1 text-[11.5px] text-coffee-400">
-                  <ListFilter size={12} />
+                <span className="flex items-center gap-1 text-[15px] text-coffee-400">
+                  <ListFilter size={15} />
                   작업점수순
                 </span>
               </div>
@@ -237,7 +256,7 @@ export default function HomePage() {
                     action={
                       <button
                         onClick={() => setFilters([])}
-                        className="rounded-full bg-coffee-700 px-4 py-2 text-[13px] font-semibold text-cream-50"
+                        className="rounded-full bg-coffee-700 px-4 py-2 text-[17px] font-semibold text-cream-50"
                       >
                         필터 초기화
                       </button>
@@ -261,14 +280,14 @@ export default function HomePage() {
         </div>
 
         {/* 데스크톱 리스트 패널 */}
-        <aside className="hidden w-[400px] shrink-0 flex-col border-l border-cream-200 bg-cream-50 lg:flex xl:w-[430px]">
+        <aside className="hidden w-[520px] shrink-0 flex-col border-l border-cream-200 bg-cream-50 lg:flex xl:w-[560px]">
           <div className="flex items-center justify-between border-b border-cream-200 px-4 py-3">
-            <h2 className="text-[14px] font-bold text-coffee-800">
+            <h2 className="text-[18px] font-bold text-coffee-800">
               {areaLabel} 주변 추천 카페{" "}
               <span className="text-forest-600">{visible.length}</span>
             </h2>
-            <span className="flex items-center gap-1 text-[11.5px] text-coffee-400">
-              <ListFilter size={12} />
+            <span className="flex items-center gap-1 text-[15px] text-coffee-400">
+              <ListFilter size={15} />
               작업점수순
             </span>
           </div>
@@ -286,7 +305,7 @@ export default function HomePage() {
                 action={
                   <button
                     onClick={() => setFilters([])}
-                    className="rounded-full bg-coffee-700 px-4 py-2 text-[13px] font-semibold text-cream-50 transition-colors hover:bg-coffee-600"
+                    className="rounded-full bg-coffee-700 px-4 py-2 text-[17px] font-semibold text-cream-50 transition-colors hover:bg-coffee-600"
                   >
                     필터 초기화
                   </button>
@@ -307,9 +326,9 @@ export default function HomePage() {
                 ))}
                 <Link
                   href="/recommend"
-                  className="flex items-center justify-center gap-2 rounded-2xl border border-dashed border-coffee-200 bg-white/60 py-4 text-[13px] font-semibold text-coffee-500 transition-colors hover:border-coffee-400 hover:text-coffee-700"
+                  className="flex items-center justify-center gap-2 rounded-2xl border border-dashed border-coffee-200 bg-white/60 py-4 text-[17px] font-semibold text-coffee-500 transition-colors hover:border-coffee-400 hover:text-coffee-700"
                 >
-                  <Sparkles size={15} className="text-forest-500" />
+                  <Sparkles size={19} className="text-forest-500" />
                   조건이 애매하다면? 내게 맞는 카페 찾기
                 </Link>
               </>

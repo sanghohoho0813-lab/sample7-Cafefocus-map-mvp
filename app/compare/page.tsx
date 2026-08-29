@@ -83,15 +83,15 @@ export default function ComparePage() {
       <div className="mx-auto max-w-6xl space-y-4 px-4 py-4 lg:px-6 lg:py-6">
         <div className="flex items-end justify-between">
           <div>
-            <h1 className="text-[20px] font-bold text-coffee-800">카페 비교</h1>
-            <p className="mt-0.5 text-[13px] text-coffee-400">
+            <h1 className="text-[26px] font-bold text-coffee-800">카페 비교</h1>
+            <p className="mt-0.5 text-[17px] text-coffee-400">
               최대 3곳까지 작업환경을 나란히 비교할 수 있어요. ({hour}시 기준)
             </p>
           </div>
           {hydrated && cafes.length > 0 && (
             <button
               onClick={clearCompare}
-              className="text-[12.5px] font-semibold text-coffee-400 underline-offset-2 transition-colors hover:text-coffee-700 hover:underline"
+              className="text-[16.5px] font-semibold text-coffee-400 underline-offset-2 transition-colors hover:text-coffee-700 hover:underline"
             >
               전체 비우기
             </button>
@@ -106,7 +106,7 @@ export default function ComparePage() {
             action={
               <Link
                 href="/"
-                className="rounded-full bg-coffee-700 px-4 py-2 text-[13px] font-semibold text-cream-50 transition-colors hover:bg-coffee-600"
+                className="rounded-full bg-coffee-700 px-4 py-2 text-[17px] font-semibold text-cream-50 transition-colors hover:bg-coffee-600"
               >
                 지도에서 카페 찾기
               </Link>
@@ -142,29 +142,29 @@ export default function ComparePage() {
                         className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-white/90 text-coffee-500 shadow-card transition-transform active:scale-90"
                         aria-label={`${cafe.name} 비교 제외`}
                       >
-                        <X size={13} />
+                        <X size={16.5} />
                       </button>
                       {i === bestScoreIdx && cafes.length > 1 && (
-                        <span className="absolute left-2 top-2 rounded-full bg-forest-600 px-2 py-0.5 text-[10px] font-bold text-white">
+                        <span className="absolute left-2 top-2 rounded-full bg-forest-600 px-2 py-0.5 text-[13px] font-bold text-white">
                           작업점수 1위
                         </span>
                       )}
                     </div>
                     <div className="p-3">
                       <Link href={`/cafe/${cafe.id}`} className="block">
-                        <h3 className="truncate text-[14px] font-bold text-coffee-800 hover:underline">
+                        <h3 className="truncate text-[18px] font-bold text-coffee-800 hover:underline">
                           {cafe.name}
                         </h3>
                       </Link>
-                      <div className="mt-0.5 flex items-center gap-1 text-[11.5px] text-coffee-400">
-                        <Star size={10.5} className="fill-amber2-400 text-amber2-400" />
+                      <div className="mt-0.5 flex items-center gap-1 text-[15px] text-coffee-400">
+                        <Star size={13} className="fill-amber2-400 text-amber2-400" />
                         {cafe.rating.toFixed(1)} · {AREA_MAP[cafe.area].name}
                       </div>
                       <div
                         className={`mt-2.5 flex items-center justify-center gap-1.5 rounded-xl py-2 text-white ${scoreBgClass(score)}`}
                       >
-                        <span className="text-[19px] font-bold leading-none">{score}</span>
-                        <span className="text-[10.5px] opacity-80">작업점수</span>
+                        <span className="text-[24.5px] font-bold leading-none">{score}</span>
+                        <span className="text-[13.5px] opacity-80">작업점수</span>
                       </div>
                       <dl className="mt-2 divide-y divide-cream-200">
                         {ROWS.map((row) => {
@@ -172,14 +172,14 @@ export default function ComparePage() {
                           const highlight = best === i;
                           return (
                             <div key={row.label} className="py-2">
-                              <dt className="text-[10.5px] text-coffee-300">{row.label}</dt>
+                              <dt className="text-[13.5px] text-coffee-300">{row.label}</dt>
                               <dd
-                                className={`mt-0.5 text-[12.5px] font-semibold ${
+                                className={`mt-0.5 text-[16.5px] font-semibold ${
                                   highlight ? "text-forest-600" : "text-coffee-700"
                                 }`}
                               >
                                 {row.value(cafe, hour)}
-                                {highlight && <span className="ml-1 text-[10px]">●</span>}
+                                {highlight && <span className="ml-1 text-[13px]">●</span>}
                               </dd>
                             </div>
                           );
@@ -198,9 +198,9 @@ export default function ComparePage() {
                     className="flex h-11 w-11 items-center justify-center rounded-full bg-coffee-700 text-cream-50 shadow-card transition-transform hover:scale-105 active:scale-95"
                     aria-label="비교할 카페 추가"
                   >
-                    <Plus size={19} />
+                    <Plus size={24} />
                   </button>
-                  <span className="text-[12.5px] font-medium text-coffee-400">
+                  <span className="text-[16.5px] font-medium text-coffee-400">
                     카페 추가하기
                   </span>
                   {pickerOpen && (
@@ -215,15 +215,15 @@ export default function ComparePage() {
                           className="flex w-full items-center justify-between gap-2 px-3.5 py-2 text-left transition-colors hover:bg-cream-100"
                         >
                           <span className="min-w-0">
-                            <span className="block truncate text-[13px] font-semibold text-coffee-800">
+                            <span className="block truncate text-[17px] font-semibold text-coffee-800">
                               {c.name}
                             </span>
-                            <span className="text-[11px] text-coffee-400">
+                            <span className="text-[14.5px] text-coffee-400">
                               {AREA_MAP[c.area].name}
                               {favorites.includes(c.id) && " · 즐겨찾기"}
                             </span>
                           </span>
-                          <span className="shrink-0 text-[12.5px] font-bold text-forest-600">
+                          <span className="shrink-0 text-[16.5px] font-bold text-forest-600">
                             {workScore(c.metrics)}
                           </span>
                         </button>

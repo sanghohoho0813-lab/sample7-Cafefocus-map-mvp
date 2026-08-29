@@ -30,8 +30,8 @@ export default function CafesPage() {
     <div className="h-full overflow-y-auto">
       <div className="mx-auto max-w-6xl space-y-4 px-4 py-4 lg:px-6 lg:py-6">
         <div>
-          <h1 className="text-[20px] font-bold text-coffee-800">카페 리스트</h1>
-          <p className="mt-0.5 text-[13px] text-coffee-400">
+          <h1 className="text-[26px] font-bold text-coffee-800">카페 리스트</h1>
+          <p className="mt-0.5 text-[17px] text-coffee-400">
             노트북 작업에 좋은 카페만 골라봤어요. 지금 {hour}시 기준이에요.
           </p>
         </div>
@@ -78,7 +78,7 @@ export default function CafesPage() {
             action={
               <button
                 onClick={() => setFilters([])}
-                className="rounded-full bg-coffee-700 px-4 py-2 text-[13px] font-semibold text-cream-50 transition-colors hover:bg-coffee-600"
+                className="rounded-full bg-coffee-700 px-4 py-2 text-[17px] font-semibold text-cream-50 transition-colors hover:bg-coffee-600"
               >
                 필터 초기화
               </button>

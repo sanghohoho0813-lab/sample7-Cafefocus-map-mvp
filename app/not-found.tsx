@@ -12,7 +12,7 @@ export default function NotFound() {
         action={
           <Link
             href="/"
-            className="rounded-full bg-coffee-700 px-4 py-2 text-[13px] font-semibold text-cream-50 transition-colors hover:bg-coffee-600"
+            className="rounded-full bg-coffee-700 px-4 py-2 text-[17px] font-semibold text-cream-50 transition-colors hover:bg-coffee-600"
           >
             지도로 돌아가기
           </Link>

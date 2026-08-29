@@ -87,9 +87,9 @@ export default function SearchBox({
     <div ref={boxRef} className={`relative ${className}`}>
       <div className="flex items-center gap-2 rounded-full border border-cream-300 bg-white px-4 py-2.5 shadow-sm transition-all duration-200 focus-within:border-coffee-400 focus-within:shadow-card">
         {loading ? (
-          <Loader2 size={16} className="shrink-0 animate-spin text-coffee-400" />
+          <Loader2 size={20} className="shrink-0 animate-spin text-coffee-400" />
         ) : (
-          <Search size={16} className="shrink-0 text-coffee-400" />
+          <Search size={20} className="shrink-0 text-coffee-400" />
         )}
         <input
           value={query}
@@ -99,7 +99,7 @@ export default function SearchBox({
           }}
           onFocus={() => setOpen(true)}
           placeholder={placeholder}
-          className="w-full bg-transparent text-[14px] text-coffee-800 outline-none placeholder:text-coffee-300"
+          className="w-full bg-transparent text-[18px] text-coffee-800 outline-none placeholder:text-coffee-300"
           aria-label="검색"
         />
       </div>
@@ -114,18 +114,18 @@ export default function SearchBox({
             >
               <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-cream-100 text-coffee-500">
                 {s.type === "area" ? (
-                  <MapPin size={14} />
+                  <MapPin size={17.5} />
                 ) : s.type === "station" ? (
-                  <TrainFront size={14} />
+                  <TrainFront size={17.5} />
                 ) : (
-                  <Coffee size={14} />
+                  <Coffee size={17.5} />
                 )}
               </span>
               <span className="min-w-0">
-                <span className="block truncate text-[13.5px] font-semibold text-coffee-800">
+                <span className="block truncate text-[17.5px] font-semibold text-coffee-800">
                   {s.label}
                 </span>
-                <span className="block truncate text-[11.5px] text-coffee-400">
+                <span className="block truncate text-[15px] text-coffee-400">
                   {s.sub}
                 </span>
               </span>
@@ -134,7 +134,7 @@ export default function SearchBox({
         </div>
       )}
       {open && query.trim() && suggestions.length === 0 && !loading && (
-        <div className="absolute inset-x-0 top-full z-50 mt-2 rounded-2xl border border-cream-200 bg-white px-4 py-5 text-center text-[13px] text-coffee-400 shadow-card-lg animate-fade-up">
+        <div className="absolute inset-x-0 top-full z-50 mt-2 rounded-2xl border border-cream-200 bg-white px-4 py-5 text-center text-[17px] text-coffee-400 shadow-card-lg animate-fade-up">
           검색 결과가 없어요. 다른 지역이나 카페명을 입력해 보세요.
         </div>
       )}

@@ -35,14 +35,14 @@ export default function CompareButton({
     return (
       <button
         onClick={handle}
-        className={`flex w-full items-center justify-center gap-1.5 rounded-xl border py-2.5 text-[13px] font-semibold transition-all duration-200 active:scale-[0.98] ${
+        className={`flex w-full items-center justify-center gap-1.5 rounded-xl border py-2.5 text-[17px] font-semibold transition-all duration-200 active:scale-[0.98] ${
           active
             ? "border-forest-500 bg-forest-50 text-forest-700"
             : "border-cream-300 bg-white text-coffee-600 hover:border-coffee-300"
         }`}
         aria-pressed={active}
       >
-        {active ? <Check size={15} /> : <Scale size={15} />}
+        {active ? <Check size={19} /> : <Scale size={19} />}
         {active ? "비교함에 담김" : "비교 담기"}
       </button>
     );
@@ -51,7 +51,7 @@ export default function CompareButton({
   return (
     <button
       onClick={handle}
-      className={`inline-flex items-center justify-center gap-1 rounded-full border text-[11.5px] font-semibold transition-all duration-200 active:scale-95 ${
+      className={`inline-flex items-center justify-center gap-1 rounded-full border text-[15px] font-semibold transition-all duration-200 active:scale-95 ${
         compact ? "h-8 w-8" : "px-2.5 py-1.5"
       } ${
         active

@@ -20,8 +20,8 @@ export default function FavoritesPage() {
     <div className="h-full overflow-y-auto">
       <div className="mx-auto max-w-6xl space-y-4 px-4 py-4 lg:px-6 lg:py-6">
         <div>
-          <h1 className="text-[20px] font-bold text-coffee-800">즐겨찾기</h1>
-          <p className="mt-0.5 text-[13px] text-coffee-400">
+          <h1 className="text-[26px] font-bold text-coffee-800">즐겨찾기</h1>
+          <p className="mt-0.5 text-[17px] text-coffee-400">
             저장해 둔 작업 카페 {hydrated ? cafes.length : 0}곳
           </p>
         </div>
@@ -34,7 +34,7 @@ export default function FavoritesPage() {
             action={
               <Link
                 href="/"
-                className="rounded-full bg-coffee-700 px-4 py-2 text-[13px] font-semibold text-cream-50 transition-colors hover:bg-coffee-600"
+                className="rounded-full bg-coffee-700 px-4 py-2 text-[17px] font-semibold text-cream-50 transition-colors hover:bg-coffee-600"
               >
                 지도에서 카페 찾기
               </Link>

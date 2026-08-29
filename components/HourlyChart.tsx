@@ -33,10 +33,10 @@ export default function HourlyChart({
   return (
     <div>
       <div className="mb-2 flex items-center justify-between">
-        <span className="text-[12px] text-coffee-400">
+        <span className="text-[15.5px] text-coffee-400">
           {String(selectedHour).padStart(2, "0")}:00 기준
         </span>
-        <span className={`text-[13px] font-bold ${LEVEL_TEXT_CLASS[level]}`}>
+        <span className={`text-[17px] font-bold ${LEVEL_TEXT_CLASS[level]}`}>
           {labelMap[level]}
         </span>
       </div>
@@ -73,7 +73,7 @@ export default function HourlyChart({
           );
         })}
       </div>
-      <div className="mt-1 flex justify-between text-[9.5px] text-coffee-300">
+      <div className="mt-1 flex justify-between text-[12.5px] text-coffee-300">
         {cafe.hourly
           .filter((p) => p.hour % 3 === 0)
           .map((p) => (

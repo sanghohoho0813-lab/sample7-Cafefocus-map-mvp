@@ -24,6 +24,32 @@ const NAV = [
   { href: "/my", label: "마이페이지", icon: User },
 ];
 
+/** 메뉴별 아이콘 컬러 — 어두운 사이드바에서 또렷하게 보이는 밝은 톤 */
+const NAV_ICON_COLOR: Record<string, string> = {
+  "/": "text-sky-300",
+  "/cafes": "text-amber-300",
+  "/favorites": "text-rose-300",
+  "/compare": "text-violet-300",
+  "/recommend": "text-emerald-300",
+  "/my": "text-teal-300",
+};
+const NAV_ICON_ACTIVE: Record<string, string> = {
+  "/": "text-sky-200",
+  "/cafes": "text-amber-200",
+  "/favorites": "text-rose-200",
+  "/compare": "text-violet-200",
+  "/recommend": "text-emerald-200",
+  "/my": "text-teal-200",
+};
+
+/** 모바일 하단 탭 아이콘 컬러 (밝은 배경) */
+const MOBILE_ICON_COLOR: Record<string, string> = {
+  "/": "text-sky-500",
+  "/cafes": "text-amber-500",
+  "/favorites": "text-rose-500",
+  "/my": "text-teal-500",
+};
+
 const WEEK_BARS = [42, 68, 55, 90, 74, 30, 22];
 const WEEK_LABELS = ["월", "화", "수", "목", "금", "토", "일"];
 
@@ -64,16 +90,20 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               <Link
                 key={href}
                 href={href}
-                className={`group flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-[13.5px] font-medium transition-colors duration-200 ${
+                className={`group flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-[17.5px] font-semibold transition-colors duration-200 ${
                   active
-                    ? "bg-coffee-600 text-cream-50 shadow-marker"
-                    : "text-cream-200/75 hover:bg-coffee-700 hover:text-cream-100"
+                    ? "bg-coffee-600 text-white shadow-marker"
+                    : "text-cream-50/90 hover:bg-coffee-700 hover:text-white"
                 }`}
               >
-                <Icon size={16} strokeWidth={2} />
+                <Icon
+                  size={20}
+                  strokeWidth={2.2}
+                  className={active ? NAV_ICON_ACTIVE[href] : NAV_ICON_COLOR[href]}
+                />
                 <span className="flex-1">{label}</span>
                 {badge !== null && (
-                  <span className="rounded-full bg-forest-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                  <span className="rounded-full bg-forest-500 px-1.5 py-0.5 text-[13px] font-bold text-white">
                     {badge}
                   </span>
                 )}
@@ -83,12 +113,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </nav>
         {/* 이번 주 집중 시간 위젯 */}
         <div className="mx-4 mb-5 rounded-2xl bg-coffee-700/70 p-4">
-          <div className="text-[11px] text-cream-200/70">이번 주 집중 시간</div>
-          <div className="mt-1 flex items-baseline gap-1">
-            <span className="text-2xl font-bold text-cream-50">24.5</span>
-            <span className="text-xs text-cream-200/80">h</span>
+          <div className="text-[14.5px] font-medium text-cream-100/90">
+            이번 주 집중 시간
           </div>
-          <div className="mt-0.5 text-[10.5px] text-forest-300">
+          <div className="mt-1 flex items-baseline gap-1">
+            <span className="text-3xl font-bold text-white">24.5</span>
+            <span className="text-sm font-medium text-cream-100/90">h</span>
+          </div>
+          <div className="mt-0.5 text-[13.5px] font-semibold text-emerald-300">
             지난 주 대비 +12%
           </div>
           <div className="mt-3 flex h-12 items-end justify-between gap-1.5">
@@ -100,7 +132,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                   }`}
                   style={{ height: `${Math.max(h * 0.4, 6)}px` }}
                 />
-                <span className="text-[9px] text-cream-200/50">
+                <span className="text-[11.5px] font-medium text-cream-100/70">
                   {WEEK_LABELS[i]}
                 </span>
               </div>
@@ -130,10 +162,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                       active ? "bg-forest-600 text-white" : "bg-coffee-700 text-cream-100"
                     }`}
                   >
-                    <Icon size={20} strokeWidth={2.1} />
+                    <Icon size={25} strokeWidth={2.1} />
                   </span>
                   <span
-                    className={`mt-0.5 text-[10px] font-medium ${
+                    className={`mt-0.5 text-[13px] font-medium ${
                       active ? "text-forest-700" : "text-coffee-400"
                     }`}
                   >
@@ -147,12 +179,16 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 key={href}
                 href={href}
                 className={`flex flex-1 flex-col items-center justify-center gap-0.5 py-2 transition-colors ${
-                  active ? "text-coffee-700" : "text-coffee-300"
+                  active ? "text-coffee-800" : "text-coffee-400"
                 }`}
                 aria-label={label}
               >
-                <Icon size={19} strokeWidth={active ? 2.4 : 2} />
-                <span className="text-[10px] font-medium">{label}</span>
+                <Icon
+                  size={24}
+                  strokeWidth={active ? 2.4 : 2}
+                  className={active ? MOBILE_ICON_COLOR[href] : "text-coffee-300"}
+                />
+                <span className="text-[13px] font-semibold">{label}</span>
               </Link>
             );
           })}

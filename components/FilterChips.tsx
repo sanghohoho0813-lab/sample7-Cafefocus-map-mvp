@@ -40,7 +40,7 @@ export default function FilterChips({
           className="chip chip-idle text-coffee-400"
           aria-label="필터 초기화"
         >
-          <RotateCcw size={13} />
+          <RotateCcw size={16.5} />
           초기화
         </button>
       )}
