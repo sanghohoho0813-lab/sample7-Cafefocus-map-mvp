@@ -45,15 +45,15 @@ export default function LiveClock({ className = "" }: { className?: string }) {
 
   return (
     <div
-      className={`flex shrink-0 items-center gap-2 rounded-full border border-cream-300 bg-white px-3.5 py-2 shadow-sm ${className}`}
+      className={`flex shrink-0 items-center gap-1.5 rounded-full border border-cream-300 bg-white px-3 py-2 shadow-sm sm:gap-2 sm:px-3.5 ${className}`}
       role="status"
       aria-label={`오늘 ${dateText} ${timeText}`}
     >
       <CalendarDays size={17} className="shrink-0 text-violet-500" />
-      <span className="whitespace-nowrap text-[15.5px] font-semibold text-coffee-700">
+      <span className="whitespace-nowrap text-[14.5px] font-semibold text-coffee-700 sm:text-[15.5px]">
         {dateText}
       </span>
-      <span className="whitespace-nowrap font-mono text-[16.5px] font-bold tabular-nums text-coffee-900">
+      <span className="whitespace-nowrap font-mono text-[15.5px] font-bold tabular-nums text-coffee-900 sm:text-[16.5px]">
         {timeText}
       </span>
     </div>

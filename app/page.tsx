@@ -13,6 +13,7 @@ import CafeMiniCard from "@/components/CafeMiniCard";
 import FilterChips from "@/components/FilterChips";
 import SearchBox from "@/components/SearchBox";
 import LiveClock from "@/components/LiveClock";
+import BrandCredit from "@/components/BrandCredit";
 import MobileBottomSheet, { type SheetState } from "@/components/MobileBottomSheet";
 import EmptyState from "@/components/EmptyState";
 import { useApp } from "@/lib/store";
@@ -103,9 +104,8 @@ export default function HomePage() {
         {/* 오늘 날짜 · 실시간 시각 (xl 미만에서는 이 줄에 표시) */}
         <div className="flex items-center justify-between gap-2 xl:hidden">
           <LiveClock />
-          <span className="hidden truncate text-[14.5px] font-medium text-coffee-400 sm:block">
-            지금 일하기 좋은 카페를 찾아보세요.
-          </span>
+          {/* 데스크톱은 사이드바에 크레딧이 있으므로 여기서는 모바일·태블릿에만 노출 */}
+          <BrandCredit label="" className="shrink-0" />
         </div>
         <div className="flex items-center gap-2">
           <SearchBox

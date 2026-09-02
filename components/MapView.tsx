@@ -6,6 +6,7 @@ import type { AreaKey, Cafe } from "@/lib/types";
 import { AREA_MAP, DEMO_LOCATION } from "@/lib/data/cafes";
 import { workScore, hourlyAt, levelOf } from "@/lib/scoring";
 import MapCanvas from "@/components/MapCanvas";
+import BrandCredit from "@/components/BrandCredit";
 
 /* 지역별 장식용 동네 라벨 (데모 맵 레이어) */
 const AREA_LABELS: Record<AreaKey | "all", { name: string; x: number; y: number }[]> = {
@@ -112,7 +113,7 @@ function separateMarkers(
   }
   // 상단 배너·줌 컨트롤·Bottom Sheet에 가리지 않는 영역으로 클램프
   return pts.map((p) => ({
-    x: Math.min(Math.max(p.x, 8), 88),
+    x: Math.min(Math.max(p.x, 8), 85),
     y: Math.min(Math.max(p.y, 16), 64),
   }));
 }
@@ -375,9 +376,7 @@ export default function MapView({
             </div>
           </div>
         </div>
-        <span className="text-[12px] font-medium text-coffee-400">
-          Demo Map · CafeFocus
-        </span>
+        <BrandCredit variant="mini" />
       </div>
 
       {children}

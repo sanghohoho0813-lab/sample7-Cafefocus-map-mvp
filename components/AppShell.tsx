@@ -12,6 +12,7 @@ import {
   Map as MapIcon,
 } from "lucide-react";
 import Logo from "@/components/Logo";
+import BrandCredit from "@/components/BrandCredit";
 import Toasts from "@/components/Toasts";
 import { useApp } from "@/lib/store";
 
@@ -112,7 +113,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           })}
         </nav>
         {/* 이번 주 집중 시간 위젯 */}
-        <div className="mx-4 mb-5 rounded-2xl bg-coffee-700/70 p-4">
+        <div className="mx-4 rounded-2xl bg-coffee-700/70 p-4">
           <div className="text-[14.5px] font-medium text-cream-100/90">
             이번 주 집중 시간
           </div>
@@ -138,6 +139,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               </div>
             ))}
           </div>
+        </div>
+        {/* 제작사 크레딧 */}
+        <div className="mx-4 mb-5 mt-4 border-t border-cream-100/10 pt-4">
+          <BrandCredit variant="dark" />
         </div>
       </aside>
 

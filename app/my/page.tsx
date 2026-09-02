@@ -18,6 +18,7 @@ import { demoHour, workScore } from "@/lib/scoring";
 import CafeCard from "@/components/CafeCard";
 import EmptyState from "@/components/EmptyState";
 import MetricBadge from "@/components/MetricBadge";
+import BrandCredit from "@/components/BrandCredit";
 import { useApp } from "@/lib/store";
 
 export default function MyPage() {
@@ -168,6 +169,15 @@ export default function MyPage() {
             새 후기 작성하기
           </button>
         </section>
+
+        {/* 제작사 */}
+        <footer className="flex flex-col items-center gap-2 border-t border-cream-200 pt-6 text-center">
+          <BrandCredit label="" />
+          <p className="text-[14px] leading-relaxed text-coffee-400">
+            CafeFocus는 미래에이아이랩이 만든
+            <br className="sm:hidden" /> 작업환경 데이터 서비스 MVP입니다.
+          </p>
+        </footer>
       </div>
     </div>
   );
