@@ -22,6 +22,7 @@ import {
 } from "@/lib/scoring";
 import CafePhoto from "@/components/CafePhoto";
 import EmptyState from "@/components/EmptyState";
+import SampleBridgeCTA from "@/components/SampleBridgeCTA";
 import { useApp } from "@/lib/store";
 import type { Cafe } from "@/lib/types";
 
@@ -235,6 +236,8 @@ export default function ComparePage() {
             </div>
           </div>
         )}
+
+        <SampleBridgeCTA className="mb-6" />
       </div>
     </div>
   );

@@ -19,6 +19,7 @@ import CafeCard from "@/components/CafeCard";
 import EmptyState from "@/components/EmptyState";
 import MetricBadge from "@/components/MetricBadge";
 import BrandCredit from "@/components/BrandCredit";
+import SampleBridgeCTA from "@/components/SampleBridgeCTA";
 import { useApp } from "@/lib/store";
 
 export default function MyPage() {
@@ -170,13 +171,12 @@ export default function MyPage() {
           </button>
         </section>
 
-        {/* 제작사 */}
-        <footer className="flex flex-col items-center gap-2 border-t border-cream-200 pt-6 text-center">
+        {/* 브릿지 CTA */}
+        <SampleBridgeCTA />
+
+        {/* 제작사 (CTA에 사명이 들어가므로 로고만 간결하게) */}
+        <footer className="flex justify-center border-t border-cream-200 pt-6">
           <BrandCredit label="" />
-          <p className="text-[14px] leading-relaxed text-coffee-400">
-            CafeFocus는 미래에이아이랩이 만든
-            <br className="sm:hidden" /> 작업환경 데이터 서비스 MVP입니다.
-          </p>
         </footer>
       </div>
     </div>

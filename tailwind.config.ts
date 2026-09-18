@@ -43,6 +43,19 @@ const config: Config = {
           500: "#3E7C74",
           600: "#33665F",
         },
+        /* 미래AI랩 브랜드 컬러 (로고에서 추출) */
+        brand: {
+          50: "#EAF7FB",
+          100: "#CFEAF4",
+          300: "#4FC6EA",
+          400: "#00A9E2",
+          500: "#0084FC",
+          600: "#00606C",
+          700: "#00546C",
+          800: "#003C48",
+          900: "#00303C",
+          cyan: "#00E4FC",
+        },
         amber2: {
           400: "#D9A441",
           500: "#C4902F",
@@ -104,6 +117,20 @@ const config: Config = {
           "0%": { opacity: "0", transform: "translateY(12px) scale(0.97)" },
           "100%": { opacity: "1", transform: "translateY(0) scale(1)" },
         },
+        /* CTA 버튼 위를 아주 약하게 스치는 광택.
+           한 번 지나간 뒤 대부분의 시간은 화면 밖에서 멈춰 있어
+           "은은하게 한 번씩" 반짝이는 정도로만 보인다. */
+        "cta-sweep": {
+          "0%": { transform: "translateX(-150%) skewX(-18deg)", opacity: "0" },
+          "4%": { opacity: "0.5" },
+          "16%": { transform: "translateX(150%) skewX(-18deg)", opacity: "0" },
+          "100%": { transform: "translateX(150%) skewX(-18deg)", opacity: "0" },
+        },
+        /* 배지 테두리 광택 — 밝기만 아주 조금 오르내린다 */
+        "badge-glow": {
+          "0%, 100%": { opacity: "0.3" },
+          "50%": { opacity: "0.7" },
+        },
       },
       animation: {
         "fade-up": "fade-up 0.3s ease-out both",
@@ -112,6 +139,8 @@ const config: Config = {
         "pulse-ring": "pulse-ring 2s ease-out infinite",
         "heart-pop": "heart-pop 0.35s ease-out",
         "toast-in": "toast-in 0.25s ease-out both",
+        "cta-sweep": "cta-sweep 6s ease-in-out infinite",
+        "badge-glow": "badge-glow 4.5s ease-in-out infinite",
       },
     },
   },

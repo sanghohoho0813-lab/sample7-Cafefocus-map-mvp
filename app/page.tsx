@@ -14,6 +14,7 @@ import FilterChips from "@/components/FilterChips";
 import SearchBox from "@/components/SearchBox";
 import LiveClock from "@/components/LiveClock";
 import BrandCredit from "@/components/BrandCredit";
+import SampleBridgeCTA from "@/components/SampleBridgeCTA";
 import MobileBottomSheet, { type SheetState } from "@/components/MobileBottomSheet";
 import EmptyState from "@/components/EmptyState";
 import { useApp } from "@/lib/store";
@@ -263,16 +264,20 @@ export default function HomePage() {
                     }
                   />
                 ) : (
-                  visible.map((cafe) => (
-                    <div key={cafe.id} onClick={() => addRecent(cafe.id)}>
-                      <CafeCard
-                        cafe={cafe}
-                        hour={hour}
-                        variant="row"
-                        highlighted={cafe.id === selectedId}
-                      />
-                    </div>
-                  ))
+                  <>
+                    {visible.map((cafe) => (
+                      <div key={cafe.id} onClick={() => addRecent(cafe.id)}>
+                        <CafeCard
+                          cafe={cafe}
+                          hour={hour}
+                          variant="row"
+                          highlighted={cafe.id === selectedId}
+                        />
+                      </div>
+                    ))}
+                    {/* 시트를 끝까지 올려 목록을 다 본 사용자를 위한 브릿지 CTA */}
+                    <SampleBridgeCTA variant="panel" className="mt-1" />
+                  </>
                 )}
               </div>
             )}
@@ -331,6 +336,8 @@ export default function HomePage() {
                   <Sparkles size={19} className="text-forest-500" />
                   조건이 애매하다면? 내게 맞는 카페 찾기
                 </Link>
+                {/* 목록을 끝까지 내려본 사용자를 위한 브릿지 CTA */}
+                <SampleBridgeCTA variant="panel" className="mt-1" />
               </>
             )}
           </div>

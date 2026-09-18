@@ -18,6 +18,7 @@ import WorkScoreRing from "@/components/WorkScoreRing";
 import MetricBadge from "@/components/MetricBadge";
 import FavoriteButton from "@/components/FavoriteButton";
 import CompareButton from "@/components/CompareButton";
+import SampleBridgeCTA from "@/components/SampleBridgeCTA";
 
 type Step = 0 | 1 | 2 | 3;
 
@@ -278,6 +279,9 @@ export default function RecommendPage() {
                 </div>
               );
             })}
+
+            {/* 추천 결과까지 확인한 시점에 노출 (위저드 진행 중에는 다음 버튼과 경쟁하지 않도록 숨김) */}
+            <SampleBridgeCTA className="mt-6" />
           </div>
         )}
       </div>

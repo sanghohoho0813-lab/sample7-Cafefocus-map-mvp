@@ -50,6 +50,7 @@ import HourlyChart from "@/components/HourlyChart";
 import FavoriteButton from "@/components/FavoriteButton";
 import CompareButton from "@/components/CompareButton";
 import CafeCard from "@/components/CafeCard";
+import SampleBridgeCTA from "@/components/SampleBridgeCTA";
 import { useApp } from "@/lib/store";
 
 export default function CafeDetail({ cafe }: { cafe: Cafe }) {
@@ -320,6 +321,11 @@ export default function CafeDetail({ cafe }: { cafe: Cafe }) {
               비교함에서 카페 비교하기
             </Link>
           </aside>
+        </div>
+
+        {/* 브릿지 CTA — 상세를 다 본 뒤 전체 폭으로 */}
+        <div className="mt-4 px-3 sm:px-0">
+          <SampleBridgeCTA />
         </div>
       </div>
     </div>

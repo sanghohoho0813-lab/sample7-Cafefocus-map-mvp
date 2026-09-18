@@ -9,6 +9,7 @@ import CafeCard from "@/components/CafeCard";
 import FilterChips from "@/components/FilterChips";
 import SearchBox from "@/components/SearchBox";
 import EmptyState from "@/components/EmptyState";
+import SampleBridgeCTA from "@/components/SampleBridgeCTA";
 import { useRouter } from "next/navigation";
 
 export default function CafesPage() {
@@ -85,12 +86,14 @@ export default function CafesPage() {
             }
           />
         ) : (
-          <div className="grid grid-cols-1 gap-4 pb-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {visible.map((cafe) => (
               <CafeCard key={cafe.id} cafe={cafe} hour={hour} variant="card" />
             ))}
           </div>
         )}
+
+        <SampleBridgeCTA className="mt-2 mb-6" />
       </div>
     </div>
   );

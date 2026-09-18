@@ -7,6 +7,7 @@ import { CAFES } from "@/lib/data/cafes";
 import { demoHour } from "@/lib/scoring";
 import CafeCard from "@/components/CafeCard";
 import EmptyState from "@/components/EmptyState";
+import SampleBridgeCTA from "@/components/SampleBridgeCTA";
 import { useApp } from "@/lib/store";
 
 export default function FavoritesPage() {
@@ -41,12 +42,14 @@ export default function FavoritesPage() {
             }
           />
         ) : (
-          <div className="grid grid-cols-1 gap-4 pb-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {cafes.map((cafe) => (
               <CafeCard key={cafe.id} cafe={cafe} hour={hour} variant="card" />
             ))}
           </div>
         )}
+
+        <SampleBridgeCTA className="mt-2 mb-6" />
       </div>
     </div>
   );
