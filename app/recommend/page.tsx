@@ -1,288 +1,272 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, Sparkles, RotateCcw, Star, Crown } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, AlertCircle, Laptop, BookOpen, Users, Mail, BookMarked, RotateCcw } from "lucide-react";
 import type { Purpose, PriorityKey, StayLength } from "@/lib/types";
-import {
-  PURPOSES,
-  PRIORITIES,
-  STAY_OPTIONS,
-  recommend,
-  type RecommendResult,
-} from "@/lib/recommendation";
+import { PRIORITIES, STAY_OPTIONS, recommend, type RecommendResult } from "@/lib/recommendation";
+import { PURPOSES, PURPOSE_LABEL, fitCaution, verdict } from "@/lib/fit";
 import { AREA_MAP } from "@/lib/data/cafes";
-import { demoHour, hourlyAt, levelOf, CROWD_LABEL, formatStay } from "@/lib/scoring";
+import { distanceKm, formatDistance } from "@/lib/scoring";
+import { useApp } from "@/lib/store";
+import { useFitContext } from "@/lib/useFitContext";
 import CafePhoto from "@/components/CafePhoto";
-import WorkScoreRing from "@/components/WorkScoreRing";
-import MetricBadge from "@/components/MetricBadge";
+import CafeCard from "@/components/CafeCard";
+import ScorePill from "@/components/ScorePill";
 import FavoriteButton from "@/components/FavoriteButton";
-import CompareButton from "@/components/CompareButton";
-import SampleBridgeCTA from "@/components/SampleBridgeCTA";
 
-type Step = 0 | 1 | 2 | 3;
+const PURPOSE_ICON: Record<Purpose, typeof Laptop> = {
+  focus: Laptop,
+  study: BookOpen,
+  meeting: Users,
+  light: Mail,
+  reading: BookMarked,
+};
+
+const STEPS = ["작업 목적", "중요한 조건", "머무는 시간"];
 
 export default function RecommendPage() {
-  const [step, setStep] = useState<Step>(0);
+  const { prefs, setPrefs } = useApp();
+  const { hour, now, timeLabel } = useFitContext();
+  const [step, setStep] = useState(0);
   const [purpose, setPurpose] = useState<Purpose | null>(null);
-  const [priorities, setPriorities] = useState<PriorityKey[]>([]);
+  const [priorities, setPriorities] = useState<PriorityKey[] | null>(null);
   const [stay, setStay] = useState<StayLength | null>(null);
   const [results, setResults] = useState<RecommendResult[] | null>(null);
-  const [hour, setHour] = useState(15);
-  useEffect(() => setHour(demoHour(new Date())), []);
+
+  // 처음엔 저장된 선호 조건으로 채워 둔다 (다시 들어와도 이어서 고를 수 있게)
+  const curPurpose = purpose ?? prefs.purpose;
+  const curPriorities = priorities ?? prefs.priorities;
+  const curStay = stay ?? prefs.stay;
 
   const run = () => {
-    if (!purpose || !stay) return;
-    setResults(recommend({ purpose, priorities, stay }));
+    const next = { purpose: curPurpose, priorities: curPriorities, stay: curStay };
+    setPrefs(next);
+    setResults(recommend({ ...next, hour }));
     setStep(3);
   };
 
-  const reset = () => {
-    setStep(0);
-    setPurpose(null);
-    setPriorities([]);
-    setStay(null);
+  const restart = () => {
     setResults(null);
+    setStep(0);
   };
 
-  const stepLabels = ["사용 목적", "중요 요소", "체류 시간"];
+  const top = results?.[0];
+  const rest = results?.slice(1) ?? [];
 
   return (
-    <div className="h-full overflow-y-auto">
-      <div className="mx-auto max-w-2xl px-4 py-5 pb-10 lg:py-8">
-        <div className="text-center">
-          <div className="inline-flex items-center gap-1.5 rounded-full bg-forest-50 px-3 py-1 text-[15.5px] font-semibold text-forest-700">
-            <Sparkles size={16.5} />
-            맞춤 추천
-          </div>
-          <h1 className="mt-2 text-[27.5px] font-bold text-coffee-800">
-            내게 맞는 카페 찾기
-          </h1>
-          <p className="mt-1 text-[17px] text-coffee-400">
-            맛있는 커피보다 오늘은 조용한 자리가 더 중요하니까.
-          </p>
-        </div>
-
-        {/* 진행 표시 */}
+    <div className="h-full overflow-y-auto bg-cream-50">
+      <div className="mx-auto max-w-3xl px-4 pb-14 pt-6 sm:px-6 lg:pt-8">
         {step < 3 && (
-          <div className="mt-6 flex items-center justify-center gap-2">
-            {stepLabels.map((label, i) => (
-              <div key={label} className="flex items-center gap-2">
-                <div
-                  className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[15.5px] font-semibold transition-colors ${
-                    i === step
-                      ? "bg-coffee-700 text-cream-50"
-                      : i < step
-                        ? "bg-forest-100 text-forest-700"
-                        : "bg-cream-200 text-coffee-400"
-                  }`}
-                >
-                  <span>{i + 1}</span>
-                  <span className="hidden sm:inline">{label}</span>
-                </div>
-                {i < 2 && <div className="h-px w-5 bg-cream-300" />}
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Step 1: 목적 */}
-        {step === 0 && (
-          <div className="mt-6 space-y-2.5 animate-fade-up">
-            <h2 className="text-[19.5px] font-bold text-coffee-800">
-              오늘은 어떤 작업을 하시나요?
-            </h2>
-            {PURPOSES.map((p) => (
-              <button
-                key={p.key}
-                onClick={() => setPurpose(p.key)}
-                className={`flex w-full items-center gap-3.5 rounded-2xl border bg-white p-4 text-left transition-all duration-200 hover:shadow-card ${
-                  purpose === p.key
-                    ? "border-coffee-600 ring-2 ring-coffee-600/15"
-                    : "border-cream-200"
-                }`}
-                aria-pressed={purpose === p.key}
-              >
-                <span className="text-[28.5px]">{p.emoji}</span>
-                <span>
-                  <span className="block text-[19px] font-bold text-coffee-800">
-                    {p.label}
+          <>
+            <header>
+              <h1 className="text-page text-coffee-900">맞춤 추천</h1>
+              <p className="mt-1 text-meta text-coffee-400">
+                세 가지만 고르면 {timeLabel.replace(" 기준", "")} 기준으로 가장 잘 맞는 곳을 골라드려요.
+              </p>
+            </header>
+            <ol className="mt-6 flex items-center gap-2" aria-label="진행 단계">
+              {STEPS.map((label, i) => (
+                <li key={label} className="flex flex-1 flex-col gap-1.5">
+                  <span className={`h-1 rounded-full ${i <= step ? "bg-coffee-800" : "bg-cream-300"}`} />
+                  <span className={`text-caption ${i === step ? "font-bold text-coffee-900" : "text-coffee-400"}`}>
+                    {i + 1}. {label}
                   </span>
-                  <span className="text-[16.5px] text-coffee-400">{p.desc}</span>
-                </span>
-              </button>
-            ))}
-            <div className="flex justify-end pt-2">
-              <button
-                onClick={() => purpose && setStep(1)}
-                disabled={!purpose}
-                className="flex items-center gap-1.5 rounded-full bg-coffee-700 px-5 py-2.5 text-[17.5px] font-semibold text-cream-50 transition-all enabled:hover:bg-coffee-600 disabled:opacity-40"
-              >
-                다음 <ArrowRight size={19} />
-              </button>
-            </div>
-          </div>
+                </li>
+              ))}
+            </ol>
+          </>
         )}
 
-        {/* Step 2: 우선순위 */}
-        {step === 1 && (
-          <div className="mt-6 space-y-3 animate-fade-up">
-            <h2 className="text-[19.5px] font-bold text-coffee-800">
-              특히 중요한 요소를 골라주세요{" "}
-              <span className="text-[15.5px] font-medium text-coffee-400">(최대 3개)</span>
-            </h2>
-            <div className="flex flex-wrap gap-2">
-              {PRIORITIES.map((p) => {
-                const on = priorities.includes(p.key);
+        {/* ---------- 1. 목적 ---------- */}
+        {step === 0 && (
+          <section className="mt-8 animate-fade-up">
+            <h2 className="text-section text-coffee-900">오늘은 어떤 작업을 하나요?</h2>
+            <div className="mt-4 grid gap-2.5 sm:grid-cols-2">
+              {PURPOSES.map((p) => {
+                const Icon = PURPOSE_ICON[p.key];
+                const active = curPurpose === p.key;
                 return (
                   <button
                     key={p.key}
+                    type="button"
+                    onClick={() => setPurpose(p.key)}
+                    aria-pressed={active}
+                    className={`flex items-center gap-4 rounded-2xl border bg-white p-4 text-left transition-colors ${
+                      active ? "border-coffee-800 ring-1 ring-coffee-800" : "border-cream-300 hover:border-coffee-300"
+                    }`}
+                  >
+                    <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${active ? "bg-coffee-800 text-cream-50" : "bg-cream-100 text-coffee-500"}`}>
+                      <Icon size={20} />
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block text-title text-coffee-900">{p.label}</span>
+                      <span className="block text-meta text-coffee-400">{p.desc}</span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="mt-8 flex justify-end">
+              <button type="button" onClick={() => setStep(1)} className="btn-primary">
+                다음 <ArrowRight size={17} />
+              </button>
+            </div>
+          </section>
+        )}
+
+        {/* ---------- 2. 조건 ---------- */}
+        {step === 1 && (
+          <section className="mt-8 animate-fade-up">
+            <h2 className="text-section text-coffee-900">특히 중요한 조건이 있나요?</h2>
+            <p className="mt-1 text-meta text-coffee-400">최대 3개 · 고르지 않아도 괜찮아요</p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              {PRIORITIES.map((p) => {
+                const on = curPriorities.includes(p.key);
+                const full = !on && curPriorities.length >= 3;
+                return (
+                  <button
+                    key={p.key}
+                    type="button"
+                    disabled={full}
                     onClick={() =>
-                      setPriorities((prev) =>
-                        on
-                          ? prev.filter((k) => k !== p.key)
-                          : prev.length >= 3
-                            ? prev
-                            : [...prev, p.key]
-                      )
+                      setPriorities(on ? curPriorities.filter((k) => k !== p.key) : [...curPriorities, p.key])
                     }
-                    className={`chip px-4 py-2.5 text-[18px] ${on ? "chip-active" : "chip-idle"}`}
+                    className={`chip h-11 px-4 text-body disabled:cursor-not-allowed disabled:opacity-40 ${on ? "chip-active" : "chip-idle"}`}
                     aria-pressed={on}
                   >
+                    {on && <Check size={16} strokeWidth={2.6} />}
                     {p.label}
                   </button>
                 );
               })}
             </div>
-            <div className="flex justify-between pt-2">
-              <button
-                onClick={() => setStep(0)}
-                className="flex items-center gap-1.5 rounded-full border border-cream-300 bg-white px-5 py-2.5 text-[17.5px] font-semibold text-coffee-600 transition-colors hover:border-coffee-300"
-              >
-                <ArrowLeft size={19} /> 이전
+            <div className="mt-8 flex justify-between">
+              <button type="button" onClick={() => setStep(0)} className="btn-secondary">
+                <ArrowLeft size={17} /> 이전
               </button>
-              <button
-                onClick={() => setStep(2)}
-                className="flex items-center gap-1.5 rounded-full bg-coffee-700 px-5 py-2.5 text-[17.5px] font-semibold text-cream-50 transition-colors hover:bg-coffee-600"
-              >
-                다음 <ArrowRight size={19} />
+              <button type="button" onClick={() => setStep(2)} className="btn-primary">
+                다음 <ArrowRight size={17} />
               </button>
             </div>
-          </div>
+          </section>
         )}
 
-        {/* Step 3: 체류시간 */}
+        {/* ---------- 3. 체류 ---------- */}
         {step === 2 && (
-          <div className="mt-6 space-y-2.5 animate-fade-up">
-            <h2 className="text-[19.5px] font-bold text-coffee-800">
-              얼마나 머무를 예정인가요?
-            </h2>
-            {STAY_OPTIONS.map((s) => (
-              <button
-                key={s.key}
-                onClick={() => setStay(s.key)}
-                className={`w-full rounded-2xl border bg-white p-4 text-left text-[19px] font-bold text-coffee-800 transition-all duration-200 hover:shadow-card ${
-                  stay === s.key
-                    ? "border-coffee-600 ring-2 ring-coffee-600/15"
-                    : "border-cream-200"
-                }`}
-                aria-pressed={stay === s.key}
-              >
-                {s.label}
+          <section className="mt-8 animate-fade-up">
+            <h2 className="text-section text-coffee-900">얼마나 머물 예정인가요?</h2>
+            <div className="mt-4 grid gap-2.5 sm:grid-cols-3">
+              {STAY_OPTIONS.map((s) => {
+                const active = curStay === s.key;
+                return (
+                  <button
+                    key={s.key}
+                    type="button"
+                    onClick={() => setStay(s.key)}
+                    aria-pressed={active}
+                    className={`rounded-2xl border bg-white p-4 text-left transition-colors ${
+                      active ? "border-coffee-800 ring-1 ring-coffee-800" : "border-cream-300 hover:border-coffee-300"
+                    }`}
+                  >
+                    <span className="block text-title text-coffee-900">{s.label}</span>
+                    <span className="block text-meta text-coffee-400">{s.desc}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="mt-8 flex justify-between">
+              <button type="button" onClick={() => setStep(1)} className="btn-secondary">
+                <ArrowLeft size={17} /> 이전
               </button>
-            ))}
-            <div className="flex justify-between pt-2">
-              <button
-                onClick={() => setStep(1)}
-                className="flex items-center gap-1.5 rounded-full border border-cream-300 bg-white px-5 py-2.5 text-[17.5px] font-semibold text-coffee-600 transition-colors hover:border-coffee-300"
-              >
-                <ArrowLeft size={19} /> 이전
-              </button>
-              <button
-                onClick={run}
-                disabled={!stay}
-                className="flex items-center gap-1.5 rounded-full bg-forest-600 px-5 py-2.5 text-[17.5px] font-semibold text-white transition-all enabled:hover:bg-forest-700 disabled:opacity-40"
-              >
-                <Sparkles size={19} /> 추천 받기
+              <button type="button" onClick={run} className="btn-primary">
+                추천 받기
               </button>
             </div>
-          </div>
+          </section>
         )}
 
-        {/* 결과 */}
+        {/* ---------- 결과: 결론 → 이유 → 행동 ---------- */}
         {step === 3 && results && (
-          <div className="mt-6 space-y-3.5 animate-fade-up">
-            <div className="flex items-center justify-between">
-              <h2 className="text-[19.5px] font-bold text-coffee-800">
-                지금 {hour}시, 이 카페를 추천해요
-              </h2>
-              <button
-                onClick={reset}
-                className="flex items-center gap-1 text-[16.5px] font-semibold text-coffee-400 transition-colors hover:text-coffee-700"
-              >
-                <RotateCcw size={16.5} /> 다시 하기
+          <section className="animate-fade-up">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-meta text-coffee-400">
+                  {PURPOSE_LABEL[curPurpose]} · {timeLabel.replace(" 기준", "")} 기준
+                </p>
+                <h1 className="mt-1 text-page text-coffee-900">여기가 가장 잘 맞아요</h1>
+              </div>
+              <button type="button" onClick={restart} className="btn-quiet shrink-0 text-label">
+                <RotateCcw size={15} /> 다시 고르기
               </button>
             </div>
-            {results.map((r, i) => {
-              const crowdLv = levelOf(hourlyAt(r.cafe, hour).crowd);
-              return (
-                <div
-                  key={r.cafe.id}
-                  className={`relative overflow-hidden rounded-2xl border bg-white shadow-card transition-all duration-300 hover:shadow-card-lg ${
-                    i === 0 ? "border-forest-500 ring-2 ring-forest-500/15" : "border-cream-200"
-                  }`}
-                  style={{ animationDelay: `${i * 80}ms` }}
-                >
-                  <Link href={`/cafe/${r.cafe.id}`} className="flex gap-3.5 p-3.5">
-                    <div className="relative shrink-0">
-                      <CafePhoto cafe={r.cafe} className="h-24 w-24 rounded-xl" sizes="96px" />
-                      <span
-                        className={`absolute -left-1.5 -top-1.5 flex h-7 w-7 items-center justify-center rounded-full text-[15.5px] font-bold text-white shadow-marker ${
-                          i === 0 ? "bg-forest-600" : "bg-coffee-500"
-                        }`}
-                      >
-                        {i === 0 ? <Crown size={16.5} /> : i + 1}
-                      </span>
+
+            {!top ? (
+              <p className="mt-6 rounded-xl bg-white px-4 py-4 text-body text-coffee-600">
+                이 시간에 영업 중인 카페가 없어요. 지도에서 다른 시간을 골라보세요.
+              </p>
+            ) : (
+              <article className="mt-6 overflow-hidden rounded-2xl border border-cream-300/80 bg-white">
+                <div className="relative">
+                  <CafePhoto cafe={top.cafe} variant="wide" className="aspect-[16/9] w-full" sizes="(max-width: 768px) 100vw, 720px" />
+                  <FavoriteButton cafeId={top.cafe.id} onImage className="absolute right-3 top-3" />
+                </div>
+                <div className="p-5 sm:p-6">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      <h2 className="text-section text-coffee-900">{top.cafe.name}</h2>
+                      <p className="mt-0.5 text-meta text-coffee-400">
+                        {AREA_MAP[top.cafe.area].name} · {formatDistance(distanceKm(top.cafe.lat, top.cafe.lng))}
+                      </p>
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <h3 className="truncate text-[19.5px] font-bold text-coffee-800">
-                            {r.cafe.name}
-                          </h3>
-                          <div className="mt-0.5 flex items-center gap-1 text-[15px] text-coffee-400">
-                            <Star size={13} className="fill-amber2-400 text-amber2-400" />
-                            {r.cafe.rating.toFixed(1)} · {AREA_MAP[r.cafe.area].name} ·{" "}
-                            평균 {formatStay(r.cafe.avgStayMinutes)} ·{" "}
-                            {CROWD_LABEL[crowdLv]}
-                          </div>
-                        </div>
-                        <WorkScoreRing score={r.score} size={67.5} label="적합도" animate={i === 0} />
-                      </div>
-                      <div className="mt-2 flex flex-wrap gap-1.5">
-                        {r.reasons.map((reason) => (
-                          <MetricBadge key={reason} label={reason} tone="green" />
-                        ))}
-                      </div>
-                    </div>
-                  </Link>
-                  <div className="flex items-center gap-2 border-t border-cream-100 px-3.5 py-2.5">
-                    <Link
-                      href={`/cafe/${r.cafe.id}`}
-                      className="flex-1 rounded-xl bg-coffee-700 py-2 text-center text-[16.5px] font-semibold text-cream-50 transition-colors hover:bg-coffee-600"
-                    >
-                      상세 보기
+                    <ScorePill score={top.score} size="lg" />
+                  </div>
+                  <p className="mt-4 text-title text-coffee-800">{verdict(top.cafe, hour)}</p>
+                  <ul className="mt-3 space-y-2">
+                    {top.reasons.map((r) => (
+                      <li key={r} className="flex items-center gap-2 text-body text-coffee-700">
+                        <Check size={17} strokeWidth={2.6} className="shrink-0 text-forest-600" />
+                        {r}
+                      </li>
+                    ))}
+                  </ul>
+                  {fitCaution(top.cafe, hour) && (
+                    <p className="mt-3 flex items-center gap-2 text-meta font-medium text-amber2-500">
+                      <AlertCircle size={16} className="shrink-0" />
+                      {fitCaution(top.cafe, hour)}
+                    </p>
+                  )}
+                  <div className="mt-6 flex flex-col gap-2.5 sm:flex-row">
+                    <Link href={`/cafe/${top.cafe.id}/plan?hour=${hour}`} className="btn-primary flex-1">
+                      {hour}시에 여기서 작업하기
                     </Link>
-                    <CompareButton cafeId={r.cafe.id} />
-                    <FavoriteButton cafeId={r.cafe.id} size="sm" />
+                    <Link href={`/cafe/${top.cafe.id}`} className="btn-secondary flex-1">
+                      자세히 보기
+                    </Link>
                   </div>
                 </div>
-              );
-            })}
+              </article>
+            )}
 
-            {/* 추천 결과까지 확인한 시점에 노출 (위저드 진행 중에는 다음 버튼과 경쟁하지 않도록 숨김) */}
-            <SampleBridgeCTA className="mt-6" />
-          </div>
+            {rest.length > 0 && (
+              <div className="mt-10">
+                <h2 className="text-title text-coffee-900">다른 후보</h2>
+                <div className="mt-3 space-y-2.5">
+                  {rest.map((r) => (
+                    <CafeCard key={r.cafe.id} cafe={r.cafe} purpose={curPurpose} hour={hour} now={now} />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <p className="mt-8 rounded-xl bg-cream-100 px-4 py-3 text-meta text-coffee-500">
+              고른 조건을 저장했어요. 지도에서도 &lsquo;{PURPOSE_LABEL[curPurpose]}&rsquo; 기준 적합도로 보여드려요. ·{" "}
+              <Link href="/" className="font-semibold text-coffee-800 underline underline-offset-4">
+                지도에서 보기
+              </Link>
+              <span className="mt-1 block text-caption text-coffee-400">조건 기반 추천(규칙 기반) · 데모 데이터</span>
+            </p>
+          </section>
         )}
       </div>
     </div>

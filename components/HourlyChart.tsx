@@ -1,23 +1,25 @@
 "use client";
 
 import type { Cafe } from "@/lib/types";
-import {
-  levelOf,
-  NOISE_LABEL,
-  CROWD_LABEL,
-  LEVEL_TEXT_CLASS,
-} from "@/lib/scoring";
+import { isOpenAt, levelOf, NOISE_LABEL, CROWD_LABEL, type LevelKey } from "@/lib/scoring";
+
+/* 단일 색상 농도로 붐빔 정도를 표현 (색 수를 늘리지 않는다) */
+const BAR: Record<LevelKey, string> = {
+  quiet: "bg-coffee-200",
+  normal: "bg-coffee-300",
+  busy: "bg-coffee-500",
+};
 
 /**
- * 시간대별 소음/혼잡 바 차트.
- * 바를 누르면 해당 시간 기준으로 상태가 갱신된다.
+ * 시간대별 혼잡/소음 막대 그래프.
+ * 막대를 누르면 그 시간을 기준으로 위쪽 결론이 다시 계산된다.
  */
 export default function HourlyChart({
   cafe,
   metric,
   selectedHour,
   onSelect,
-  height = 72,
+  height = 96,
 }: {
   cafe: Cafe;
   metric: "noise" | "crowd";
@@ -25,60 +27,59 @@ export default function HourlyChart({
   onSelect: (hour: number) => void;
   height?: number;
 }) {
-  const selected = cafe.hourly.find((h) => h.hour === selectedHour);
-  const value = selected ? selected[metric] : 0;
-  const level = levelOf(value);
   const labelMap = metric === "noise" ? NOISE_LABEL : CROWD_LABEL;
 
   return (
     <div>
-      <div className="mb-2 flex items-center justify-between">
-        <span className="text-[15.5px] text-coffee-400">
-          {String(selectedHour).padStart(2, "0")}:00 기준
-        </span>
-        <span className={`text-[17px] font-bold ${LEVEL_TEXT_CLASS[level]}`}>
-          {labelMap[level]}
-        </span>
-      </div>
-      <div
-        className="flex items-end gap-[3px]"
-        style={{ height }}
-        role="group"
-        aria-label="시간대별 그래프"
-      >
+      <div className="flex items-end gap-1" style={{ height }} role="group" aria-label={`시간대별 ${metric === "noise" ? "소음" : "혼잡도"}`}>
         {cafe.hourly.map((p) => {
           const v = p[metric];
-          const isSel = p.hour === selectedHour;
           const lv = levelOf(v);
-          const barColor = isSel
-            ? "bg-coffee-700"
-            : lv === "busy"
-              ? "bg-coffee-300/80"
-              : lv === "normal"
-                ? "bg-forest-300/80"
-                : "bg-forest-200";
+          const open = isOpenAt(cafe, p.hour);
+          const sel = p.hour === selectedHour;
           return (
             <button
               key={p.hour}
+              type="button"
               onClick={() => onSelect(p.hour)}
-              className="group flex h-full flex-1 flex-col items-center justify-end gap-1"
-              aria-label={`${p.hour}시 ${labelMap[levelOf(v)]}`}
-              aria-pressed={isSel}
+              className="group flex h-full min-w-0 flex-1 items-end rounded-t focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-coffee-600"
+              aria-label={`${p.hour}시 ${open ? labelMap[lv] : "영업 외"}`}
+              aria-pressed={sel}
             >
-              <div
-                className={`w-full min-w-[6px] rounded-t-[3px] transition-all duration-200 group-hover:opacity-80 ${barColor}`}
+              <span
+                className={`block w-full rounded-t-[4px] transition-colors duration-200 ${
+                  sel ? "bg-coffee-900" : open ? `${BAR[lv]} group-hover:bg-coffee-400` : "bg-cream-300"
+                }`}
                 style={{ height: `${Math.max(v, 8)}%` }}
               />
             </button>
           );
         })}
       </div>
-      <div className="mt-1 flex justify-between text-[12.5px] text-coffee-300">
-        {cafe.hourly
-          .filter((p) => p.hour % 3 === 0)
-          .map((p) => (
-            <span key={p.hour}>{String(p.hour).padStart(2, "0")}</span>
-          ))}
+      {/* 축: 막대와 같은 격자에 3시간 간격 표기 */}
+      <div className="mt-1.5 flex gap-1" aria-hidden>
+        {cafe.hourly.map((p) => (
+          <span
+            key={p.hour}
+            className={`num min-w-0 flex-1 text-center text-caption ${
+              p.hour === selectedHour ? "font-bold text-coffee-900" : "text-coffee-400"
+            }`}
+          >
+            {p.hour === selectedHour || p.hour % 3 === 0 ? p.hour : ""}
+          </span>
+        ))}
+      </div>
+      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-caption text-coffee-500" aria-hidden>
+        {(["quiet", "normal", "busy"] as LevelKey[]).map((lv) => (
+          <span key={lv} className="flex items-center gap-1.5">
+            <span className={`h-2.5 w-2.5 rounded-sm ${BAR[lv]}`} />
+            {labelMap[lv].replace("해요", "").replace("이에요", "").replace("워요", "움")}
+          </span>
+        ))}
+        <span className="flex items-center gap-1.5">
+          <span className="h-2.5 w-2.5 rounded-sm bg-cream-300" />
+          영업 외
+        </span>
       </div>
     </div>
   );

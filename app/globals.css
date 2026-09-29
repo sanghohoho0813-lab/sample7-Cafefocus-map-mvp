@@ -12,7 +12,7 @@ body {
 }
 
 body {
-  @apply bg-cream-100 text-coffee-800 font-sans antialiased;
+  @apply bg-cream-100 text-body text-coffee-800 font-sans antialiased;
   overflow-x: hidden;
   /* 한글이 단어 중간에서 끊기지 않도록 어절 단위로 줄바꿈 */
   word-break: keep-all;
@@ -45,32 +45,87 @@ body {
 }
 
 @layer components {
+  /* ---- 버튼: 높이·반경·서체를 한 곳에서 통일 ---- */
+  .btn {
+    @apply inline-flex select-none items-center justify-center gap-2 whitespace-nowrap rounded-xl text-btn transition-colors duration-200
+      focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-coffee-600
+      disabled:cursor-not-allowed disabled:opacity-40;
+  }
+  .btn-primary {
+    @apply btn h-12 bg-coffee-800 px-5 text-cream-50 hover:bg-coffee-700 active:bg-coffee-900;
+  }
+  .btn-secondary {
+    @apply btn h-12 border border-cream-300 bg-white px-5 text-coffee-700 hover:border-coffee-300 hover:bg-cream-50;
+  }
+  .btn-quiet {
+    @apply btn h-10 px-3 text-coffee-500 hover:bg-cream-200/60 hover:text-coffee-800;
+  }
+  .icon-btn {
+    @apply inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-cream-300 bg-white text-coffee-500 transition-colors duration-200
+      hover:border-coffee-300 hover:text-coffee-800
+      focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-coffee-600;
+  }
+
+  /* ---- 칩: 필터·선택 옵션 ---- */
   .chip {
-    @apply inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-3.5 py-2 text-[13px] font-medium transition-all duration-200 select-none cursor-pointer;
+    @apply inline-flex h-10 shrink-0 cursor-pointer select-none items-center gap-1.5 whitespace-nowrap rounded-full border px-3.5 text-label transition-colors duration-200
+      focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-coffee-600;
   }
   .chip-idle {
-    @apply border-cream-300 bg-white text-coffee-600 hover:border-coffee-200 hover:bg-cream-50 shadow-sm;
+    @apply border-cream-300 bg-white text-coffee-600 hover:border-coffee-300;
   }
   .chip-active {
-    @apply border-coffee-600 bg-coffee-600 text-cream-50 shadow-marker;
+    @apply border-coffee-800 bg-coffee-800 text-cream-50;
+  }
+
+  /* ---- 선택형 카드 옵션 (폼) ---- */
+  .option {
+    @apply flex cursor-pointer select-none items-center justify-center rounded-xl border bg-white px-3 text-label transition-colors duration-200
+      focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-coffee-600;
+  }
+  .option-idle {
+    @apply border-cream-300 text-coffee-600 hover:border-coffee-300;
+  }
+  .option-active {
+    @apply border-coffee-800 bg-coffee-800 text-cream-50;
+  }
+
+  .field {
+    @apply w-full rounded-xl border border-cream-300 bg-white px-4 py-3 text-body text-coffee-800 outline-none transition-colors duration-200
+      placeholder:text-coffee-300 focus:border-coffee-500;
+  }
+
+  /* 숫자(시간·점수·거리)는 줄바꿈되지 않고 폭이 흔들리지 않게 */
+  .num {
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
   }
 }
 
-/* 지도 마커 진입 애니메이션 stagger */
+/* 지도 마커 진입 애니메이션 */
 .marker-enter {
-  animation: pop-in 0.3s ease-out both;
+  animation: pop-in 0.25s ease-out both;
 }
 
 @keyframes pop-in {
   0% {
     opacity: 0;
-    transform: scale(0.7) translateY(6px);
-  }
-  70% {
-    transform: scale(1.05) translateY(0);
+    transform: scale(0.8) translateY(4px);
   }
   100% {
     opacity: 1;
     transform: scale(1) translateY(0);
+  }
+}
+
+/* 움직임 줄이기 설정 존중 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

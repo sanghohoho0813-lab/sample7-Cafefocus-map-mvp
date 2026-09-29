@@ -6,24 +6,26 @@ export default function EmptyState({
   title,
   description,
   action,
+  compact = false,
 }: {
   icon?: LucideIcon;
   title: string;
   description?: string;
   action?: React.ReactNode;
+  compact?: boolean;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-3 px-6 py-14 text-center animate-fade-in">
-      <div className="flex h-14 w-14 items-center justify-center rounded-full bg-cream-200 text-coffee-400">
-        <Icon size={30} strokeWidth={1.8} />
+    <div
+      className={`flex flex-col items-center justify-center gap-2.5 px-6 text-center animate-fade-in ${
+        compact ? "py-8" : "py-14"
+      }`}
+    >
+      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-cream-200 text-coffee-400">
+        <Icon size={22} strokeWidth={1.9} />
       </div>
-      <p className="text-[19.5px] font-semibold text-coffee-700">{title}</p>
-      {description && (
-        <p className="max-w-xs text-[17px] leading-relaxed text-coffee-400">
-          {description}
-        </p>
-      )}
-      {action && <div className="mt-1">{action}</div>}
+      <p className="text-title text-coffee-800">{title}</p>
+      {description && <p className="max-w-xs text-meta text-coffee-400">{description}</p>}
+      {action && <div className="mt-2">{action}</div>}
     </div>
   );
 }

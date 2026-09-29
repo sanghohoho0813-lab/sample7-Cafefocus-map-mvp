@@ -1,43 +1,21 @@
-import type {
-  Cafe,
-  CafeMetrics,
-  Purpose,
-  PriorityKey,
-  StayLength,
-} from "@/lib/types";
+import type { Cafe, CafeMetrics, PriorityKey, Purpose, StayLength } from "@/lib/types";
 import { CAFES } from "@/lib/data/cafes";
-import { workScore } from "@/lib/scoring";
-
-export const PURPOSES: { key: Purpose; label: string; desc: string; emoji: string }[] = [
-  { key: "focus", label: "집중 작업", desc: "몰입해서 끝내야 하는 일", emoji: "💻" },
-  { key: "study", label: "공부", desc: "시험·자격증·강의 수강", emoji: "📚" },
-  { key: "meeting", label: "미팅", desc: "1~2시간 대화형 업무", emoji: "🤝" },
-  { key: "light", label: "가벼운 노트북", desc: "메일·문서 정리 정도", emoji: "☕" },
-  { key: "reading", label: "독서", desc: "조용히 책 읽는 시간", emoji: "📖" },
-];
+import { isOpenAt } from "@/lib/scoring";
+import { effectiveMetrics, fitReasons, PURPOSE_WEIGHTS, weighted } from "@/lib/fit";
 
 export const PRIORITIES: { key: PriorityKey; label: string }[] = [
   { key: "quiet", label: "조용함" },
   { key: "outlet", label: "콘센트" },
   { key: "wifi", label: "Wi-Fi" },
   { key: "seat", label: "넓은 좌석" },
-  { key: "access", label: "접근성" },
+  { key: "access", label: "역에서 가까움" },
 ];
 
-export const STAY_OPTIONS: { key: StayLength; label: string }[] = [
-  { key: "short", label: "1시간 이하" },
-  { key: "medium", label: "1~2시간" },
-  { key: "long", label: "2시간 이상" },
+export const STAY_OPTIONS: { key: StayLength; label: string; desc: string }[] = [
+  { key: "short", label: "1시간 이하", desc: "잠깐 들러 처리할 일" },
+  { key: "medium", label: "1~2시간", desc: "한 가지 일을 끝낼 정도" },
+  { key: "long", label: "2시간 이상", desc: "반나절 머물 예정" },
 ];
-
-/** 목적별 기본 가중치 (합계 1.0) */
-const PURPOSE_WEIGHTS: Record<Purpose, Record<keyof CafeMetrics, number>> = {
-  focus: { noiseScore: 0.35, wifiScore: 0.2, outletScore: 0.2, seatScore: 0.15, crowdScore: 0.1, stayScore: 0 },
-  study: { noiseScore: 0.35, wifiScore: 0.1, outletScore: 0.2, seatScore: 0.1, crowdScore: 0.1, stayScore: 0.15 },
-  meeting: { noiseScore: 0.25, wifiScore: 0.1, outletScore: 0.05, seatScore: 0.3, crowdScore: 0.15, stayScore: 0.15 },
-  light: { noiseScore: 0.15, wifiScore: 0.3, outletScore: 0.15, seatScore: 0.15, crowdScore: 0.15, stayScore: 0.1 },
-  reading: { noiseScore: 0.45, wifiScore: 0, outletScore: 0.05, seatScore: 0.25, crowdScore: 0.15, stayScore: 0.1 },
-};
 
 const PRIORITY_BOOST: Record<PriorityKey, Partial<Record<keyof CafeMetrics, number>>> = {
   quiet: { noiseScore: 0.15 },
@@ -51,6 +29,7 @@ export interface RecommendInput {
   purpose: Purpose;
   priorities: PriorityKey[];
   stay: StayLength;
+  hour: number;
 }
 
 export interface RecommendResult {
@@ -59,10 +38,12 @@ export interface RecommendResult {
   reasons: string[];
 }
 
+/**
+ * 조건 기반 추천 (규칙 기반, AI 아님).
+ * 지도와 같은 시간대 적합도 위에 우선순위·체류시간 보정을 더한다.
+ */
 export function recommend(input: RecommendInput, limit = 3): RecommendResult[] {
-  const weights: Record<keyof CafeMetrics, number> = {
-    ...PURPOSE_WEIGHTS[input.purpose],
-  };
+  const weights = { ...PURPOSE_WEIGHTS[input.purpose] };
   for (const p of input.priorities) {
     const boost = PRIORITY_BOOST[p];
     (Object.keys(boost) as (keyof CafeMetrics)[]).forEach((k) => {
@@ -70,34 +51,28 @@ export function recommend(input: RecommendInput, limit = 3): RecommendResult[] {
     });
   }
 
-  const results = CAFES.map((cafe) => {
-    let score = workScore(cafe.metrics, weights);
+  return CAFES.filter((c) => isOpenAt(c, input.hour))
+    .map((cafe) => {
+      let score = weighted(effectiveMetrics(cafe, input.hour), weights);
 
-    // 체류시간 보정
-    if (input.stay === "long") {
-      score += Math.round((cafe.metrics.stayScore - 70) / 8);
-      if (cafe.avgStayMinutes >= 150) score += 2;
-    }
-    if (input.stay === "short" && cafe.stationDistanceM <= 300) score += 2;
+      if (input.stay === "long") {
+        score += Math.round((cafe.metrics.stayScore - 70) / 8);
+        // 2시간 이상 머물려면 마감까지 여유가 있어야 한다
+        if (cafe.close - input.hour < 3) score -= 6;
+      }
+      if (input.stay === "short" && cafe.stationDistanceM <= 300) score += 2;
+      if (input.priorities.includes("access")) {
+        score += Math.round((500 - Math.min(cafe.stationDistanceM, 700)) / 100);
+      }
 
-    // 접근성 우선 시 역까지 거리 보정
-    if (input.priorities.includes("access")) {
-      score += Math.round((500 - Math.min(cafe.stationDistanceM, 700)) / 100);
-    }
+      score = Math.max(0, Math.min(100, score));
 
-    score = Math.max(0, Math.min(100, score));
-
-    const reasons: string[] = [];
-    if (cafe.metrics.noiseScore >= 82) reasons.push("조용한 편이에요");
-    if (cafe.metrics.outletScore >= 82) reasons.push("콘센트가 넉넉해요");
-    if (cafe.metrics.wifiScore >= 85) reasons.push(`Wi-Fi ${cafe.wifiMbps}Mbps`);
-    if (cafe.metrics.seatScore >= 82) reasons.push("좌석이 편해요");
-    if (input.stay === "long" && cafe.metrics.stayScore >= 85)
-      reasons.push("장시간 체류 부담 없음");
-    if (cafe.stationDistanceM <= 250) reasons.push(`${cafe.station} ${cafe.stationDistanceM}m`);
-
-    return { cafe, score, reasons: reasons.slice(0, 3) };
-  });
-
-  return results.sort((a, b) => b.score - a.score).slice(0, limit);
+      const reasons = fitReasons(cafe, input.purpose, input.hour, 3);
+      if (input.priorities.includes("access") && cafe.stationDistanceM <= 300 && reasons.length < 3) {
+        reasons.push(`${cafe.station} ${cafe.stationDistanceM}m`);
+      }
+      return { cafe, score, reasons };
+    })
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit);
 }

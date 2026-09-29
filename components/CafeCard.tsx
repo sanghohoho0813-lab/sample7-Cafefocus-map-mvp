@@ -1,176 +1,133 @@
 "use client";
 
 import Link from "next/link";
-import { Star, MapPin, Clock } from "lucide-react";
-import type { Cafe } from "@/lib/types";
+import { CalendarCheck2 } from "lucide-react";
+import type { Cafe, Plan, Purpose } from "@/lib/types";
 import { AREA_MAP } from "@/lib/data/cafes";
-import {
-  workScore,
-  distanceKm,
-  formatDistance,
-  formatStay,
-  hourlyAt,
-  levelOf,
-  isOpenAt,
-  scoreBgClass,
-  NOISE_LABEL,
-  CROWD_LABEL,
-} from "@/lib/scoring";
-import { METRIC_ICON } from "@/lib/icon-colors";
+import { distanceKm, formatDistance, isOpenAt } from "@/lib/scoring";
+import { fitReasons, fitScore } from "@/lib/fit";
+import { hm, relativeDate } from "@/lib/time";
 import CafePhoto from "@/components/CafePhoto";
 import FavoriteButton from "@/components/FavoriteButton";
-import CompareButton from "@/components/CompareButton";
-import MetricBadge from "@/components/MetricBadge";
+import ScorePill from "@/components/ScorePill";
+
+/** 영업 상태를 한 구절로: "22시까지" / "11시 오픈" / "영업 종료" */
+export function openText(cafe: Cafe, hour: number): string {
+  if (isOpenAt(cafe, hour)) return cafe.close === 24 ? "자정까지" : `${cafe.close}시까지`;
+  return hour < cafe.open ? `${cafe.open}시 오픈` : "영업 종료";
+}
 
 /**
- * variant
- * - "card": 이미지형 세로 카드 (추천 캐러셀·그리드)
- * - "row" : 목록 패널용 가로 카드
+ * 카페 카드. 결론(적합도)과 이유 한 줄만 보여주고
+ * 세부 지표는 상세 화면으로 넘긴다.
+ *
+ * - row : 지도 목록 · 바텀시트 (가로형)
+ * - tile: 저장 목록 (사진형)
  */
 export default function CafeCard({
   cafe,
+  purpose,
   hour,
+  plan,
+  now = null,
   variant = "row",
   highlighted = false,
   onHover,
+  footer,
 }: {
   cafe: Cafe;
+  purpose: Purpose;
   hour: number;
-  variant?: "card" | "row";
+  /** 이 카페의 예정된 작업 계획 */
+  plan?: Plan | null;
+  now?: Date | null;
+  variant?: "row" | "tile";
   highlighted?: boolean;
   onHover?: (id: string | null) => void;
+  /** tile 하단에 붙는 보조 행동 (예: 비교 담기) */
+  footer?: React.ReactNode;
 }) {
-  const score = workScore(cafe.metrics);
-  const point = hourlyAt(cafe, hour);
-  const noiseLv = levelOf(point.noise);
-  const crowdLv = levelOf(point.crowd);
   const open = isOpenAt(cafe, hour);
-  const dist = formatDistance(distanceKm(cafe.lat, cafe.lng));
+  const score = fitScore(cafe, purpose, hour);
+  const reasons = fitReasons(cafe, purpose, hour, 2);
+  const where = `${AREA_MAP[cafe.area].name} · ${formatDistance(distanceKm(cafe.lat, cafe.lng))}`;
 
-  const badges = (
-    <div className="flex flex-wrap gap-1.5">
-      <MetricBadge
-        label={NOISE_LABEL[noiseLv]}
-        tone={noiseLv === "quiet" ? "green" : noiseLv === "normal" ? "amber" : "neutral"}
-      />
-      <MetricBadge
-        label={CROWD_LABEL[crowdLv] === "한산해요" ? "지금 한산" : CROWD_LABEL[crowdLv]}
-        tone={crowdLv === "quiet" ? "green" : crowdLv === "normal" ? "amber" : "neutral"}
-      />
-      {cafe.metrics.outletScore >= 76 && <MetricBadge label="콘센트 많음" tone="green" />}
-      {cafe.metrics.wifiScore >= 80 && <MetricBadge label="Wi-Fi 빠름" tone="green" />}
-    </div>
+  const reasonLine = !open ? (
+    <span className="text-coffee-400">이 시간엔 영업하지 않아요</span>
+  ) : reasons.length ? (
+    <span className="text-coffee-600">{reasons.join(" · ")}</span>
+  ) : (
+    <span className="text-coffee-400">무난한 작업 환경</span>
   );
 
-  if (variant === "card") {
+  const planLine = plan ? (
+    <span className="flex items-center gap-1 text-meta font-semibold text-coffee-800">
+      <CalendarCheck2 size={15} className="shrink-0" />
+      <span className="num">
+        {relativeDate(plan.date, now)} {hm(plan.startHour)} 작업 예정
+      </span>
+    </span>
+  ) : null;
+
+  if (variant === "tile") {
     return (
-      <Link
-        href={`/cafe/${cafe.id}`}
-        onMouseEnter={() => onHover?.(cafe.id)}
-        onMouseLeave={() => onHover?.(null)}
-        className={`group block overflow-hidden rounded-2xl border bg-white shadow-card transition-all duration-300 hover:-translate-y-0.5 hover:shadow-card-lg ${
-          highlighted ? "border-coffee-500 ring-2 ring-coffee-500/20" : "border-cream-200"
+      <article
+        className={`group flex flex-col overflow-hidden rounded-2xl border bg-white transition-shadow duration-200 hover:shadow-card-lg ${
+          highlighted ? "border-coffee-500" : "border-cream-300/80"
         }`}
       >
-        <div className="relative">
-          <CafePhoto
-            cafe={cafe}
-            className="aspect-[4/3] w-full"
-            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 360px"
-          />
-          <div className="absolute right-2.5 top-2.5 flex h-12 w-12 flex-col items-center justify-center rounded-full bg-white/95 shadow-card backdrop-blur">
-            <span className="text-[21px] font-bold leading-none text-coffee-800">
-              {score}
-            </span>
-            <span className="text-[11px] text-coffee-400">작업점수</span>
+        <Link href={`/cafe/${cafe.id}`} className="block focus-visible:outline-none">
+          <div className="relative">
+            <CafePhoto cafe={cafe} className="aspect-[4/3] w-full" sizes="(max-width: 640px) 100vw, (max-width: 1280px) 50vw, 400px" />
           </div>
-          <FavoriteButton cafeId={cafe.id} size="sm" className="absolute left-2.5 top-2.5" />
-          {!open && (
-            <span className="absolute bottom-2.5 left-2.5 rounded-md bg-coffee-800/85 px-2 py-1 text-[13.5px] font-medium text-cream-100">
-              영업 종료
-            </span>
-          )}
-        </div>
-        <div className="space-y-2 p-3.5">
-          <div>
-            <h3 className="text-[19.5px] font-bold text-coffee-800">{cafe.name}</h3>
-            <div className="mt-0.5 flex items-center gap-1.5 text-[15.5px] text-coffee-400">
-              <Star size={14.5} className="fill-amber2-400 text-amber2-400" />
-              <span className="font-semibold text-coffee-600">{cafe.rating.toFixed(1)}</span>
-              <span>({cafe.reviewCount})</span>
-              <span>·</span>
-              <span>{AREA_MAP[cafe.area].name}</span>
-              <span>·</span>
-              <span>{dist}</span>
+          <div className="space-y-1.5 px-4 pb-3 pt-3.5">
+            <div className="flex items-start justify-between gap-3">
+              <h3 className="truncate text-title text-coffee-900">{cafe.name}</h3>
+              <ScorePill score={score} muted={!open} />
             </div>
+            <p className="text-meta text-coffee-400">
+              {where} · <span className="num">{openText(cafe, hour)}</span>
+            </p>
+            <p className="line-clamp-1 text-meta">{reasonLine}</p>
+            {planLine}
           </div>
-          <p className="line-clamp-2 text-[16.5px] leading-relaxed text-coffee-500">
-            {cafe.description}
-          </p>
-          {badges}
+        </Link>
+        <div className="mt-auto flex items-center justify-between gap-2 border-t border-cream-200 px-4 py-2.5">
+          {footer ?? <span />}
+          <FavoriteButton cafeId={cafe.id} />
         </div>
-      </Link>
+      </article>
     );
   }
 
   return (
-    <div
+    <article
+      data-cafe-card={cafe.id}
       onMouseEnter={() => onHover?.(cafe.id)}
       onMouseLeave={() => onHover?.(null)}
-      className={`group relative rounded-2xl border bg-white p-3 shadow-card transition-all duration-300 hover:shadow-card-lg ${
-        highlighted ? "border-coffee-500 ring-2 ring-coffee-500/20" : "border-cream-200"
-      }`}
+      className={`relative scroll-my-4 rounded-2xl border bg-white transition-[border-color,box-shadow] duration-200 hover:shadow-card ${
+        highlighted ? "border-coffee-600 shadow-card" : "border-cream-300/80"
+      } ${open ? "" : "opacity-75"}`}
     >
-      <Link href={`/cafe/${cafe.id}`} className="flex gap-3">
-        <div className="relative shrink-0">
-          <CafePhoto cafe={cafe} className="h-24 w-24 rounded-xl" sizes="96px" />
-          <span
-            className={`absolute -bottom-1.5 -right-1.5 flex h-9 w-9 items-center justify-center rounded-full border-2 border-white text-[17px] font-bold text-white ${scoreBgClass(score)}`}
-            aria-label={`작업점수 ${score}점`}
-          >
-            {score}
-          </span>
-        </div>
-        <div className="min-w-0 flex-1 space-y-1.5">
-          <div className="flex items-start justify-between gap-2 pr-[76px]">
-            <div className="min-w-0">
-              <h3 className="truncate text-[19px] font-bold text-coffee-800">
-                {cafe.name}
-              </h3>
-              <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-[15px] text-coffee-400">
-                <span className="inline-flex items-center gap-0.5">
-                  <Star size={13} className="fill-amber2-400 text-amber2-400" />
-                  <b className="text-coffee-600">{cafe.rating.toFixed(1)}</b>
-                </span>
-                <span>·</span>
-                <span className="inline-flex items-center gap-0.5">
-                  <MapPin size={13} className={METRIC_ICON.location} />
-                  {AREA_MAP[cafe.area].name} {dist}
-                </span>
-                <span>·</span>
-                <span className="inline-flex items-center gap-0.5">
-                  <Clock size={13} className={METRIC_ICON.clock} />
-                  평균 {formatStay(cafe.avgStayMinutes)}
-                </span>
-              </div>
-            </div>
+      <Link
+        href={`/cafe/${cafe.id}`}
+        className="flex gap-3.5 rounded-2xl p-3 pr-14 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-coffee-600"
+      >
+        <CafePhoto cafe={cafe} className="h-[84px] w-[84px] shrink-0 rounded-xl" sizes="84px" overlay={false} />
+        <div className="min-w-0 flex-1 space-y-1">
+          <h3 className="truncate text-title text-coffee-900">{cafe.name}</h3>
+          <p className="truncate text-meta text-coffee-400">
+            {where} · <span className="num">{openText(cafe, hour)}</span>
+          </p>
+          <div className="flex min-w-0 items-center gap-2 text-meta">
+            <ScorePill score={score} muted={!open} />
+            {/* flex 자식은 min-w-0이 있어야 말줄임이 되고 카드 밖으로 넘치지 않는다 */}
+            <span className="min-w-0 truncate">{reasonLine}</span>
           </div>
-          {badges}
-          <div className="flex items-center gap-1.5 text-[15px]">
-            <span className={open ? "font-semibold text-forest-600" : "font-semibold text-coffee-300"}>
-              {open ? "영업 중" : "영업 종료"}
-            </span>
-            <span className="text-coffee-300">
-              · {String(cafe.open).padStart(2, "0")}:00 -{" "}
-              {cafe.close === 24 ? "24:00" : `${String(cafe.close).padStart(2, "0")}:00`}
-            </span>
-          </div>
+          {planLine}
         </div>
       </Link>
-      <div className="absolute right-3 top-3 flex items-center gap-1.5">
-        <CompareButton cafeId={cafe.id} compact />
-        <FavoriteButton cafeId={cafe.id} size="sm" />
-      </div>
-    </div>
+      <FavoriteButton cafeId={cafe.id} className="absolute right-3 top-3" />
+    </article>
   );
 }

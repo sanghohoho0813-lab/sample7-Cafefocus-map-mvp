@@ -7,49 +7,43 @@ import { getCafe } from "@/lib/data/cafes";
 
 export default function FavoriteButton({
   cafeId,
-  size = "md",
   className = "",
+  onImage = false,
 }: {
   cafeId: string;
-  size?: "sm" | "md" | "lg";
   className?: string;
+  /** 사진 위에 올릴 때 반투명 배경 */
+  onImage?: boolean;
 }) {
   const { isFavorite, toggleFavorite, showToast, hydrated } = useApp();
   const [popping, setPopping] = useState(false);
   const fav = hydrated && isFavorite(cafeId);
 
-  const dims =
-    size === "sm" ? "h-8 w-8" : size === "lg" ? "h-11 w-11" : "h-9 w-9";
-  const iconSize = size === "sm" ? 15 : size === "lg" ? 19 : 17;
-
   return (
     <button
+      type="button"
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();
         const name = getCafe(cafeId)?.name ?? "카페";
-        toggleFavorite(cafeId);
+        const added = toggleFavorite(cafeId);
         setPopping(true);
-        window.setTimeout(() => setPopping(false), 400);
-        if (!fav) {
-          showToast(`${name}을(를) 저장했어요.`, {
-            label: "즐겨찾기",
-            href: "/favorites",
-          });
-        } else {
-          showToast(`${name} 저장을 해제했어요.`);
-        }
+        window.setTimeout(() => setPopping(false), 350);
+        showToast(
+          added ? `${name}을(를) 저장했어요` : `${name} 저장을 해제했어요`,
+          added ? { label: "저장 목록", href: "/favorites" } : undefined
+        );
       }}
-      className={`flex items-center justify-center rounded-full border transition-all duration-200 active:scale-90 ${dims} ${
-        fav
-          ? "border-red-200 bg-red-50 text-red-400"
-          : "border-cream-300 bg-white/90 text-coffee-400 hover:border-coffee-200 hover:text-coffee-600"
-      } ${className}`}
-      aria-label={fav ? "저장 해제" : "저장"}
+      className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-coffee-600 ${
+        onImage
+          ? "bg-white/90 text-coffee-600 shadow-card hover:bg-white"
+          : "border border-cream-300 bg-white text-coffee-500 hover:border-coffee-300"
+      } ${fav ? "text-rose-500" : ""} ${className}`}
+      aria-label={fav ? "저장 해제" : "저장하기"}
       aria-pressed={fav}
     >
       <Heart
-        size={iconSize}
+        size={18}
         strokeWidth={2.1}
         fill={fav ? "currentColor" : "none"}
         className={popping ? "animate-heart-pop" : ""}

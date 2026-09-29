@@ -68,6 +68,30 @@ create table if not exists reviews (
   created_at timestamptz default now()
 );
 
+-- 작업 계획 (핵심 흐름: 계획 → 체크인 → 기록). 앱의 Plan 타입과 1:1
+create table if not exists work_plans (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references users(id) on delete cascade,
+  cafe_id text references cafes(id) on delete cascade,
+  date date not null,
+  start_hour int not null check (start_hour between 0 and 23),
+  duration_min int not null check (duration_min between 30 and 480),
+  purpose text not null,
+  memo text,
+  status text not null default 'planned' check (status in ('planned', 'completed', 'cancelled')),
+  review_id uuid references reviews(id) on delete set null,
+  created_at timestamptz default now(),
+  completed_at timestamptz,
+  cancelled_at timestamptz
+);
+create index if not exists work_plans_user_date on work_plans (user_id, date);
+
+-- 체크인 후기의 구조화 응답 (조용했나요 / 콘센트 / Wi-Fi)
+alter table reviews add column if not exists plan_id uuid;
+alter table reviews add column if not exists noise_feel text;
+alter table reviews add column if not exists outlet_feel text;
+alter table reviews add column if not exists wifi_feel text;
+
 create table if not exists favorites (
   user_id uuid references users(id) on delete cascade,
   cafe_id text references cafes(id) on delete cascade,

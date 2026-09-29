@@ -1,348 +1,272 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { ChevronDown, Clock, ListFilter, Sparkles } from "lucide-react";
-import Link from "next/link";
-import type { AreaKey, FilterKey } from "@/lib/types";
-import { AREAS, AREA_MAP, CAFES, HOURS } from "@/lib/data/cafes";
+import { useMemo, useState } from "react";
+import { Info, List, Map as MapIcon, RotateCcw } from "lucide-react";
+import type { CafeMetrics, Plan } from "@/lib/types";
+import { CAFES, CAFE_MAP } from "@/lib/data/cafes";
 import { applyFilters } from "@/lib/filters";
-import { workScore, demoHour, distanceKm } from "@/lib/scoring";
+import { PURPOSE_LABEL, PURPOSE_WEIGHTS, rankByFit } from "@/lib/fit";
+import { dateKey } from "@/lib/time";
+import { useApp } from "@/lib/store";
+import { useFitContext } from "@/lib/useFitContext";
 import MapView from "@/components/MapView";
 import CafeCard from "@/components/CafeCard";
 import CafeMiniCard from "@/components/CafeMiniCard";
-import FilterChips from "@/components/FilterChips";
-import SearchBox from "@/components/SearchBox";
-import LiveClock from "@/components/LiveClock";
-import BrandCredit from "@/components/BrandCredit";
-import SampleBridgeCTA from "@/components/SampleBridgeCTA";
+import ExploreControls from "@/components/ExploreControls";
 import MobileBottomSheet, { type SheetState } from "@/components/MobileBottomSheet";
 import EmptyState from "@/components/EmptyState";
-import { useApp } from "@/lib/store";
+import Sheet from "@/components/Sheet";
+
+const METRIC_NAME: Record<keyof CafeMetrics, string> = {
+  noiseScore: "소음 (시간대 예측 반영)",
+  crowdScore: "혼잡 (시간대 예측 반영)",
+  outletScore: "콘센트",
+  wifiScore: "Wi-Fi",
+  seatScore: "좌석·테이블",
+  stayScore: "오래 머물기 편한 정도",
+};
 
 function CardSkeleton() {
   return (
-    <div className="flex gap-3 rounded-2xl border border-cream-200 bg-white p-3">
-      <div className="h-24 w-24 shrink-0 animate-pulse rounded-xl bg-cream-200" />
+    <div className="flex gap-3.5 rounded-2xl border border-cream-300/80 bg-white p-3" aria-hidden>
+      <div className="h-[84px] w-[84px] shrink-0 animate-pulse rounded-xl bg-cream-200" />
       <div className="flex-1 space-y-2 py-1">
         <div className="h-4 w-2/3 animate-pulse rounded bg-cream-200" />
-        <div className="h-3 w-1/2 animate-pulse rounded bg-cream-200" />
-        <div className="flex gap-1.5">
-          <div className="h-5 w-16 animate-pulse rounded bg-cream-200" />
-          <div className="h-5 w-16 animate-pulse rounded bg-cream-200" />
-        </div>
+        <div className="h-3.5 w-1/2 animate-pulse rounded bg-cream-200" />
+        <div className="h-6 w-3/4 animate-pulse rounded bg-cream-200" />
       </div>
     </div>
   );
 }
 
 export default function HomePage() {
-  const { addRecent } = useApp();
-  // 첫 화면에서는 전체 지역의 카페를 모두 보여준다.
-  const [area, setArea] = useState<AreaKey | null>(null);
-  const [filters, setFilters] = useState<FilterKey[]>([]);
+  const { area, filters, setFilters, plans, hydrated, setArea } = useApp();
+  const { purpose, hour, now, timeLabel } = useFitContext();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
-  const [hour, setHour] = useState(15);
-  // 실제 현재 시각(시). 정적 프리렌더 HTML과 어긋나지 않도록 마운트 후에 채운다.
-  const [nowHour, setNowHour] = useState(15);
-  const [isNow, setIsNow] = useState(true);
   const [sheet, setSheet] = useState<SheetState>("collapsed");
-  const [ready, setReady] = useState(false);
-  const [areaOpen, setAreaOpen] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
 
-  useEffect(() => {
-    const h = demoHour(new Date());
-    setHour(h);
-    setNowHour(h);
-    const t = window.setTimeout(() => setReady(true), 550);
-    return () => window.clearTimeout(t);
-  }, []);
-
-  const visible = useMemo(() => {
+  const ranked = useMemo(() => {
     const base = area ? CAFES.filter((c) => c.area === area) : CAFES;
-    const filtered = applyFilters(base, filters, hour);
-    return [...filtered].sort((a, b) => {
-      const diff = workScore(b.metrics) - workScore(a.metrics);
-      if (diff !== 0) return diff;
-      return distanceKm(a.lat, a.lng) - distanceKm(b.lat, b.lng);
-    });
-  }, [area, filters, hour]);
+    return rankByFit(applyFilters(base, filters, hour), purpose, hour);
+  }, [area, filters, hour, purpose]);
 
-  const selected = selectedId
-    ? visible.find((c) => c.id === selectedId) ?? null
-    : null;
+  const { cafes, scores, openIds } = useMemo(
+    () => ({
+      cafes: ranked.map((r) => r.cafe),
+      scores: Object.fromEntries(ranked.map((r) => [r.cafe.id, r.score])) as Record<string, number>,
+      openIds: new Set(ranked.filter((r) => r.open).map((r) => r.cafe.id)),
+    }),
+    [ranked]
+  );
 
-  const toggleFilter = (key: FilterKey) => {
-    setFilters((prev) =>
-      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
-    );
-  };
+  /** 카페별 가장 가까운 예정 계획 — 지도 마커와 카드에 함께 표시 */
+  const planByCafe = useMemo(() => {
+    const today = now ? dateKey(now) : "";
+    const map: Record<string, Plan> = {};
+    for (const p of plans) {
+      if (p.status !== "planned" || (today && p.date < today)) continue;
+      const cur = map[p.cafeId];
+      if (!cur || p.date < cur.date || (p.date === cur.date && p.startHour < cur.startHour)) map[p.cafeId] = p;
+    }
+    return map;
+  }, [plans, now]);
+  const plannedIds = useMemo(() => new Set(Object.keys(planByCafe)), [planByCafe]);
+
+  const selected = selectedId ? cafes.find((c) => c.id === selectedId) ?? null : null;
 
   const selectCafe = (id: string | null) => {
     setSelectedId(id);
-    if (id) {
-      addRecent(id);
-      setSheet((s) => (s === "expanded" ? "half" : s));
-    }
+    if (!id) return;
+    if (sheet === "expanded") setSheet("collapsed");
+    // 데스크톱 목록에서 해당 카드가 보이도록 스크롤 (마커 ↔ 카드 동기화)
+    requestAnimationFrame(() => {
+      document
+        .querySelector(`aside [data-cafe-card="${id}"]`)
+        ?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    });
   };
 
   const onSearchCafe = (id: string) => {
-    const cafe = CAFES.find((c) => c.id === id);
-    if (cafe) {
-      setArea(cafe.area);
-      setFilters([]);
-      selectCafe(id);
-    }
+    const cafe = CAFE_MAP[id];
+    if (!cafe) return;
+    setArea(cafe.area);
+    setFilters([]);
+    selectCafe(id);
   };
 
-  const areaLabel = area ? AREA_MAP[area].name : "모든 지역";
-  const quietCount = visible.filter((c) => c.metrics.noiseScore >= 78).length;
+  const purposeLabel = PURPOSE_LABEL[purpose];
+  // 저장된 목적과 실제 현재 시각을 안 뒤에 그린다 — 로드 직후 순위·점수가 바뀌어 보이는 것을 막는다
+  const ready = hydrated && now !== null;
+
+  const empty = (
+    <EmptyState
+      title="조건에 맞는 카페가 아직 없어요"
+      description="필터를 줄이거나 다른 지역·시간을 골라보세요."
+      action={
+        <button type="button" onClick={() => setFilters([])} className="btn-secondary h-11">
+          <RotateCcw size={16} />
+          필터 초기화
+        </button>
+      }
+    />
+  );
+
+  const listItems = (withHover: boolean) =>
+    ranked.map(({ cafe }) => (
+      <CafeCard
+        key={cafe.id}
+        cafe={cafe}
+        purpose={purpose}
+        hour={hour}
+        now={now}
+        plan={planByCafe[cafe.id]}
+        highlighted={cafe.id === selectedId || (withHover && cafe.id === hoveredId)}
+        onHover={withHover ? setHoveredId : undefined}
+      />
+    ));
+
+  const listHeading = (
+    <div className="min-w-0">
+      <h2 className="truncate text-title text-coffee-900">
+        <span className="num">{ranked.length}곳</span>
+        <span className="font-semibold text-coffee-500"> · {purposeLabel} 적합도순</span>
+      </h2>
+      <p className="truncate text-caption text-coffee-400">{timeLabel.replace(" 기준", "")} 기준 · 데모 예측값</p>
+    </div>
+  );
+
+  // 접힘 상태에서는 고른 카페, 없으면 1위 카페를 바로 보여준다
+  const peek = selected ?? cafes[0] ?? null;
 
   return (
     <div className="flex h-full flex-col">
-      {/* ---- 상단 컨트롤 바 ---- */}
-      <div className="z-40 shrink-0 space-y-2.5 border-b border-cream-200 bg-cream-50/95 px-3 pb-2.5 pt-2.5 backdrop-blur lg:px-5 lg:pt-3">
-        {/* 오늘 날짜 · 실시간 시각 (xl 미만에서는 이 줄에 표시) */}
-        <div className="flex items-center justify-between gap-2 xl:hidden">
-          <LiveClock />
-          {/* 데스크톱은 사이드바에 크레딧이 있으므로 여기서는 모바일·태블릿에만 노출 */}
-          <BrandCredit label="" className="shrink-0" />
-        </div>
-        <div className="flex items-center gap-2">
-          <SearchBox
-            onSelectArea={(k) => {
-              setArea(k);
-              setSelectedId(null);
-            }}
-            onSelectCafe={onSearchCafe}
-            className="min-w-0 flex-1 lg:max-w-md"
-          />
-          {/* 지역 선택 */}
-          <div className="relative shrink-0">
-            <button
-              onClick={() => setAreaOpen((v) => !v)}
-              className="flex items-center gap-1.5 rounded-full border border-cream-300 bg-white px-3.5 py-2.5 text-[17px] font-semibold text-coffee-700 shadow-sm transition-colors hover:border-coffee-300"
-              aria-haspopup="listbox"
-              aria-expanded={areaOpen}
-            >
-              {areaLabel}
-              <ChevronDown size={17.5} className={`transition-transform ${areaOpen ? "rotate-180" : ""}`} />
-            </button>
-            {areaOpen && (
-              <div className="absolute right-0 top-full z-50 mt-2 w-40 rounded-2xl border border-cream-200 bg-white py-1.5 shadow-card-lg animate-fade-up" role="listbox">
-                <button
-                  onClick={() => {
-                    setArea(null);
-                    setAreaOpen(false);
-                    setSelectedId(null);
-                  }}
-                  className={`block w-full px-4 py-2 text-left text-[17px] transition-colors hover:bg-cream-100 ${area === null ? "font-bold text-coffee-800" : "text-coffee-500"}`}
-                >
-                  모든 지역
-                </button>
-                {AREAS.map((a) => (
-                  <button
-                    key={a.key}
-                    onClick={() => {
-                      setArea(a.key);
-                      setAreaOpen(false);
-                      setSelectedId(null);
-                    }}
-                    className={`block w-full px-4 py-2 text-left text-[17px] transition-colors hover:bg-cream-100 ${area === a.key ? "font-bold text-coffee-800" : "text-coffee-500"}`}
-                  >
-                    {a.name}
-                    <span className="ml-1 text-[14.5px] text-coffee-300">{a.station}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-          {/* 오늘 날짜 · 실시간 시각 */}
-          <LiveClock className="hidden xl:flex" />
-          {/* 시간대 선택 */}
-          <label className="hidden shrink-0 items-center gap-1.5 rounded-full border border-cream-300 bg-white px-3 py-2 text-[17px] font-semibold text-coffee-700 shadow-sm sm:flex">
-            <Clock size={17} className="text-violet-500" />
-            <select
-              value={hour}
-              onChange={(e) => {
-                setHour(Number(e.target.value));
-                setIsNow(Number(e.target.value) === nowHour);
-              }}
-              className="cursor-pointer bg-transparent outline-none"
-              aria-label="기준 시간대"
-            >
-              {HOURS.map((h) => (
-                <option key={h} value={h}>
-                  {h === nowHour ? `지금 ${h}시` : `${h}시`}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-        <FilterChips
-          active={filters}
-          onToggle={toggleFilter}
-          onReset={() => setFilters([])}
-          className="-mx-3 px-3 lg:mx-0 lg:px-0"
-        />
-      </div>
+      <ExploreControls
+        resultCount={ranked.length}
+        onSelectCafe={onSearchCafe}
+        onAreaChange={() => setSelectedId(null)}
+      />
 
-      {/* ---- 본문: 지도 + 리스트 ---- */}
       <div className="relative flex min-h-0 flex-1">
-        {/* 지도 */}
+        {/* ---------- 지도 (주 캔버스) ---------- */}
         <div className="relative min-w-0 flex-1">
           <MapView
-            cafes={visible}
+            cafes={ready ? cafes : []}
+            scores={scores}
+            openIds={openIds}
+            plannedIds={plannedIds}
             selectedId={selectedId}
             hoveredId={hoveredId}
             onSelect={selectCafe}
-            hour={hour}
             area={area}
           >
-            {/* 상태 배너 */}
-            <div className="pointer-events-none absolute left-3 top-3 z-20 hidden items-center gap-2 whitespace-nowrap rounded-full border border-cream-200 bg-white/95 px-4 py-2 text-[16.5px] text-coffee-600 shadow-card backdrop-blur md:flex">
-              <Sparkles size={16.5} className="shrink-0 text-forest-500" />
-              <span>
-                {isNow ? "지금 " : ""}
-                <b className="text-coffee-800">{hour}시</b> · 작업 카페{" "}
-                <b className="text-forest-600">{visible.length}곳</b>
-                {quietCount > 0 && (
-                  <>
-                    {" "}· 조용한 곳 <b className="text-forest-600">{quietCount}곳</b>
-                  </>
-                )}
-              </span>
-            </div>
-
-            {/* 데스크톱: 선택 카페 미니 카드 */}
             {selected && (
               <div className="absolute bottom-4 left-4 z-30 hidden lg:block">
-                <CafeMiniCard cafe={selected} hour={hour} onClose={() => setSelectedId(null)} />
+                <CafeMiniCard cafe={selected} purpose={purpose} hour={hour} onClose={() => setSelectedId(null)} />
               </div>
             )}
           </MapView>
 
-          {/* 모바일 Bottom Sheet */}
+          {/* ---------- 모바일 목록 시트 ---------- */}
           <MobileBottomSheet
             state={sheet}
             onStateChange={setSheet}
-            collapsedHeight={selected && sheet === "collapsed" ? "290px" : "148px"}
+            collapsedHeight={peek ? 196 : 92}
             header={
-              <div className="flex items-center justify-between">
-                <span className="text-[17px] font-bold text-coffee-800">
-                  {areaLabel} 작업 카페 {visible.length}
-                </span>
-                <span className="flex items-center gap-1 text-[15px] text-coffee-400">
-                  <ListFilter size={15} />
-                  작업점수순
-                </span>
+              <div className="flex items-center justify-between gap-3">
+                {listHeading}
+                <button
+                  type="button"
+                  onClick={() => setSheet(sheet === "expanded" ? "collapsed" : "expanded")}
+                  className="btn h-9 shrink-0 rounded-full border border-cream-300 bg-white px-3 text-label text-coffee-700"
+                >
+                  {sheet === "expanded" ? <MapIcon size={15} /> : <List size={15} />}
+                  {sheet === "expanded" ? "지도" : "목록"}
+                </button>
               </div>
             }
           >
-            {selected && sheet === "collapsed" ? (
-              <div className="-mx-1 pt-1">
-                <CafeCard cafe={selected} hour={hour} variant="row" highlighted />
-              </div>
+            {!ready ? (
+              <CardSkeleton />
+            ) : ranked.length === 0 ? (
+              empty
+            ) : sheet === "collapsed" && peek ? (
+              <CafeCard
+                cafe={peek}
+                purpose={purpose}
+                hour={hour}
+                now={now}
+                plan={planByCafe[peek.id]}
+                highlighted={peek.id === selectedId}
+              />
             ) : (
-              <div className="space-y-2.5 pt-1">
-                {!ready ? (
-                  <>
-                    <CardSkeleton />
-                    <CardSkeleton />
-                  </>
-                ) : visible.length === 0 ? (
-                  <EmptyState
-                    title="조건에 맞는 카페가 아직 없어요."
-                    description="필터를 조금 풀면 더 많은 작업 카페를 볼 수 있어요."
-                    action={
-                      <button
-                        onClick={() => setFilters([])}
-                        className="rounded-full bg-coffee-700 px-4 py-2 text-[17px] font-semibold text-cream-50"
-                      >
-                        필터 초기화
-                      </button>
-                    }
-                  />
-                ) : (
-                  <>
-                    {visible.map((cafe) => (
-                      <div key={cafe.id} onClick={() => addRecent(cafe.id)}>
-                        <CafeCard
-                          cafe={cafe}
-                          hour={hour}
-                          variant="row"
-                          highlighted={cafe.id === selectedId}
-                        />
-                      </div>
-                    ))}
-                    {/* 시트를 끝까지 올려 목록을 다 본 사용자를 위한 브릿지 CTA */}
-                    <SampleBridgeCTA variant="panel" className="mt-1" />
-                  </>
-                )}
-              </div>
+              <div className="space-y-2.5">{listItems(false)}</div>
             )}
           </MobileBottomSheet>
         </div>
 
-        {/* 데스크톱 리스트 패널 */}
-        <aside className="hidden w-[520px] shrink-0 flex-col border-l border-cream-200 bg-cream-50 lg:flex xl:w-[560px]">
-          <div className="flex items-center justify-between border-b border-cream-200 px-4 py-3">
-            <h2 className="text-[18px] font-bold text-coffee-800">
-              {areaLabel} 주변 추천 카페{" "}
-              <span className="text-forest-600">{visible.length}</span>
-            </h2>
-            <span className="flex items-center gap-1 text-[15px] text-coffee-400">
-              <ListFilter size={15} />
-              작업점수순
-            </span>
+        {/* ---------- 데스크톱 목록 패널 ---------- */}
+        <aside className="hidden w-[380px] shrink-0 flex-col border-l border-cream-300/70 bg-cream-50 lg:flex xl:w-[440px] min-[1440px]:w-[500px]">
+          <div className="flex items-center justify-between gap-3 border-b border-cream-300/70 px-5 py-3.5">
+            {listHeading}
+            <button type="button" onClick={() => setAboutOpen(true)} className="btn-quiet h-9 shrink-0 px-2 text-label">
+              <Info size={15} />
+              기준 보기
+            </button>
           </div>
-          <div className="min-h-0 flex-1 space-y-2.5 overflow-y-auto p-3.5">
+          <div className="min-h-0 flex-1 space-y-2.5 overflow-y-auto p-4">
             {!ready ? (
               <>
                 <CardSkeleton />
                 <CardSkeleton />
                 <CardSkeleton />
               </>
-            ) : visible.length === 0 ? (
-              <EmptyState
-                title="조건에 맞는 카페가 아직 없어요."
-                description="필터를 초기화하거나 다른 지역을 선택해 보세요."
-                action={
-                  <button
-                    onClick={() => setFilters([])}
-                    className="rounded-full bg-coffee-700 px-4 py-2 text-[17px] font-semibold text-cream-50 transition-colors hover:bg-coffee-600"
-                  >
-                    필터 초기화
-                  </button>
-                }
-              />
+            ) : ranked.length === 0 ? (
+              empty
             ) : (
-              <>
-                {visible.map((cafe) => (
-                  <div key={cafe.id} onClick={() => addRecent(cafe.id)}>
-                    <CafeCard
-                      cafe={cafe}
-                      hour={hour}
-                      variant="row"
-                      highlighted={cafe.id === selectedId || cafe.id === hoveredId}
-                      onHover={setHoveredId}
-                    />
-                  </div>
-                ))}
-                <Link
-                  href="/recommend"
-                  className="flex items-center justify-center gap-2 rounded-2xl border border-dashed border-coffee-200 bg-white/60 py-4 text-[17px] font-semibold text-coffee-500 transition-colors hover:border-coffee-400 hover:text-coffee-700"
-                >
-                  <Sparkles size={19} className="text-forest-500" />
-                  조건이 애매하다면? 내게 맞는 카페 찾기
-                </Link>
-                {/* 목록을 끝까지 내려본 사용자를 위한 브릿지 CTA */}
-                <SampleBridgeCTA variant="panel" className="mt-1" />
-              </>
+              listItems(true)
             )}
           </div>
         </aside>
       </div>
+
+      <Sheet
+        open={aboutOpen}
+        onClose={() => setAboutOpen(false)}
+        title="적합도는 이렇게 계산해요"
+        description={`지금 기준: ${purposeLabel} · ${timeLabel.replace(" 기준", "")}`}
+      >
+        <div className="space-y-4 text-body text-coffee-600">
+          <p>
+            선택한 <b className="text-coffee-800">목적</b>과 <b className="text-coffee-800">시간대</b>를 기준으로 작업
+            환경을 0~100점으로 종합한 값이에요. 목적이 바뀌면 항목별 비중이 달라져요.
+          </p>
+          <ul className="space-y-2">
+            {(Object.entries(PURPOSE_WEIGHTS[purpose]) as [keyof CafeMetrics, number][])
+              .filter(([, w]) => w > 0)
+              .sort((a, b) => b[1] - a[1])
+              .map(([k, w]) => (
+                <li key={k} className="flex items-center gap-3">
+                  <span className="w-44 shrink-0 text-meta text-coffee-600">{METRIC_NAME[k]}</span>
+                  <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-cream-200">
+                    <span
+                      className="block h-full rounded-full bg-coffee-600"
+                      style={{ width: `${(w / Math.max(...Object.values(PURPOSE_WEIGHTS[purpose]))) * 100}%` }}
+                    />
+                  </span>
+                  <span className="num w-10 text-right text-meta font-semibold text-coffee-800">
+                    {Math.round(w * 100)}%
+                  </span>
+                </li>
+              ))}
+          </ul>
+          <p className="rounded-xl bg-cream-100 px-4 py-3 text-meta text-coffee-500">
+            지금은 데모 데이터로 계산한 예측값이에요. 실제 서비스에서는 방문자 체크인과 공공·매장 데이터로 갱신할 수
+            있어요.
+          </p>
+        </div>
+      </Sheet>
     </div>
   );
 }

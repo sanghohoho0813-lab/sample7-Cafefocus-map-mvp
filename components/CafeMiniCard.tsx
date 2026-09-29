@@ -1,105 +1,71 @@
 "use client";
 
 import Link from "next/link";
-import { Star, X, Volume2, Users, Plug, Wifi } from "lucide-react";
-import type { Cafe } from "@/lib/types";
-import {
-  workScore,
-  hourlyAt,
-  levelOf,
-  distanceKm,
-  formatDistance,
-  isOpenAt,
-  NOISE_LABEL,
-  CROWD_LABEL,
-  outletLabel,
-  metricLabel,
-  LEVEL_TEXT_CLASS,
-} from "@/lib/scoring";
-import { METRIC_ICON } from "@/lib/icon-colors";
+import { ArrowRight, X } from "lucide-react";
+import type { Cafe, Purpose } from "@/lib/types";
+import { AREA_MAP } from "@/lib/data/cafes";
+import { distanceKm, formatDistance, isOpenAt } from "@/lib/scoring";
+import { fitReasons, fitScore, verdict } from "@/lib/fit";
 import CafePhoto from "@/components/CafePhoto";
 import FavoriteButton from "@/components/FavoriteButton";
-import WorkScoreRing from "@/components/WorkScoreRing";
+import ScorePill from "@/components/ScorePill";
+import { openText } from "@/components/CafeCard";
 
-/** 지도에서 마커 선택 시 뜨는 프리뷰 카드 */
+/** 지도에서 마커를 고르면 뜨는 미리보기 (데스크톱) */
 export default function CafeMiniCard({
   cafe,
+  purpose,
   hour,
   onClose,
 }: {
   cafe: Cafe;
+  purpose: Purpose;
   hour: number;
-  onClose?: () => void;
+  onClose: () => void;
 }) {
-  const score = workScore(cafe.metrics);
-  const point = hourlyAt(cafe, hour);
-  const noiseLv = levelOf(point.noise);
-  const crowdLv = levelOf(point.crowd);
+  const score = fitScore(cafe, purpose, hour);
   const open = isOpenAt(cafe, hour);
+  const reasons = fitReasons(cafe, purpose, hour, 3);
 
   return (
     <div
-      className="relative w-[330px] overflow-hidden rounded-2xl border border-cream-200 bg-white shadow-card-lg animate-fade-up"
+      className="w-[340px] overflow-hidden rounded-2xl border border-cream-300 bg-white shadow-card-lg animate-fade-up"
       onClick={(e) => e.stopPropagation()}
+      role="dialog"
+      aria-label={`${cafe.name} 미리보기`}
     >
-      {onClose && (
+      <div className="relative flex gap-3 p-4 pb-3">
+        <CafePhoto cafe={cafe} className="h-16 w-16 shrink-0 rounded-xl" sizes="64px" overlay={false} />
+        <div className="min-w-0 flex-1 pr-7">
+          <h3 className="truncate text-title text-coffee-900">{cafe.name}</h3>
+          <p className="truncate text-meta text-coffee-400">
+            {AREA_MAP[cafe.area].name} · {formatDistance(distanceKm(cafe.lat, cafe.lng))} ·{" "}
+            <span className="num">{openText(cafe, hour)}</span>
+          </p>
+        </div>
         <button
           onClick={onClose}
-          className="absolute right-2 top-2 z-10 rounded-full bg-white/80 p-1 text-coffee-300 backdrop-blur transition-colors hover:bg-cream-100 hover:text-coffee-600"
-          aria-label="닫기"
+          className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full text-coffee-400 hover:bg-cream-100 hover:text-coffee-700"
+          aria-label="미리보기 닫기"
         >
-          <X size={17.5} />
+          <X size={16} />
         </button>
-      )}
-      <div className="flex items-center gap-3 p-3">
-        <CafePhoto cafe={cafe} className="h-16 w-16 shrink-0 rounded-xl" sizes="64px" />
-        <div className="min-w-0 flex-1">
-          <h3 className="truncate pr-6 text-[19px] font-bold text-coffee-800">
-            {cafe.name}
-          </h3>
-          <div className="mt-0.5 flex items-center gap-1 text-[15px] text-coffee-400">
-            <Star size={13} className="fill-amber2-400 text-amber2-400" />
-            <b className="text-coffee-600">{cafe.rating.toFixed(1)}</b>
-            <span>({cafe.reviewCount})</span>
-            <span>· {formatDistance(distanceKm(cafe.lat, cafe.lng))}</span>
-          </div>
-          <div className="mt-0.5 text-[15px]">
-            <span className={open ? "font-semibold text-forest-600" : "font-semibold text-coffee-300"}>
-              {open ? "영업 중" : "영업 종료"}
-            </span>
-            <span className="text-coffee-300">
-              {" "}· {String(cafe.close).padStart(2, "0")}:00 마감
-            </span>
-          </div>
-        </div>
-        <WorkScoreRing score={score} size={65} label="점수" animate={false} />
       </div>
 
-      <div className="grid grid-cols-4 gap-1 border-t border-cream-200 px-3 py-2.5 text-center">
-        {[
-          { icon: Volume2, color: METRIC_ICON.noise, label: "소음", value: NOISE_LABEL[noiseLv], lv: noiseLv },
-          { icon: Users, color: METRIC_ICON.crowd, label: "혼잡", value: CROWD_LABEL[crowdLv], lv: crowdLv },
-          { icon: Plug, color: METRIC_ICON.outlet, label: "콘센트", value: outletLabel(cafe.metrics.outletScore), lv: null },
-          { icon: Wifi, color: METRIC_ICON.wifi, label: "Wi-Fi", value: metricLabel(cafe.metrics.wifiScore), lv: null },
-        ].map(({ icon: Icon, color, label, value, lv }) => (
-          <div key={label} className="flex flex-col items-center gap-0.5">
-            <Icon size={17.5} strokeWidth={2.2} className={color} />
-            <span className="text-[12.5px] text-coffee-400">{label}</span>
-            <span
-              className={`text-[13.5px] font-semibold ${lv ? LEVEL_TEXT_CLASS[lv] : "text-coffee-700"}`}
-            >
-              {value.replace("해요", "").replace("이에요", "")}
-            </span>
-          </div>
-        ))}
+      <div className="space-y-2 px-4 pb-4">
+        <div className="flex items-center gap-2.5">
+          <ScorePill score={score} muted={!open} />
+          <p className="text-meta font-semibold text-coffee-800">{verdict(cafe, hour)}</p>
+        </div>
+        {open && reasons.length > 0 && (
+          <p className="text-meta text-coffee-500">{reasons.join(" · ")}</p>
+        )}
       </div>
 
       <div className="flex items-center gap-2 border-t border-cream-200 p-3">
-        <Link
-          href={`/cafe/${cafe.id}`}
-          className="flex-1 rounded-xl bg-coffee-700 py-2.5 text-center text-[17px] font-semibold text-cream-50 transition-colors duration-200 hover:bg-coffee-600 active:scale-[0.98]"
-        >
-          상세 정보 보기
+        <Link href={`/cafe/${cafe.id}`} className="btn-primary h-11 flex-1">
+          자세히 보기
+          <ArrowRight size={16} />
         </Link>
         <FavoriteButton cafeId={cafe.id} />
       </div>

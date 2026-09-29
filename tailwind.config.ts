@@ -81,14 +81,25 @@ const config: Config = {
           "serif",
         ],
       },
-      boxShadow: {
-        card: "0 1px 2px rgba(60, 45, 30, 0.05), 0 4px 16px rgba(60, 45, 30, 0.07)",
-        "card-lg": "0 2px 6px rgba(60, 45, 30, 0.08), 0 12px 32px rgba(60, 45, 30, 0.14)",
-        marker: "0 2px 4px rgba(44, 32, 21, 0.28)",
-        sheet: "0 -8px 32px rgba(60, 45, 30, 0.16)",
+      /* 역할 기반 타이포 스케일.
+         화면 요소는 임의 px 대신 아래 역할 토큰만 사용한다. */
+      fontSize: {
+        caption: ["13px", { lineHeight: "1.45" }], // 보조 표기, 축척, 캡션
+        meta: ["14px", { lineHeight: "1.5" }], // 카드 메타, 부가 설명
+        label: ["14px", { lineHeight: "1.3", fontWeight: "600" }], // 칩·배지
+        body: ["16px", { lineHeight: "1.6" }], // 본문
+        btn: ["16px", { lineHeight: "1.25", fontWeight: "600" }], // 버튼
+        title: ["18px", { lineHeight: "1.35", fontWeight: "700" }], // 카드·리스트 제목
+        section: ["21px", { lineHeight: "1.35", fontWeight: "700" }], // 섹션 제목
+        page: ["26px", { lineHeight: "1.3", fontWeight: "700" }], // 페이지 제목
+        score: ["30px", { lineHeight: "1", fontWeight: "800" }], // 적합도 숫자
       },
-      borderRadius: {
-        xl2: "1.25rem",
+      /* Shadow 토큰 3단계 + 지도 마커 전용 */
+      boxShadow: {
+        card: "0 1px 2px rgba(60, 45, 30, 0.05), 0 2px 10px rgba(60, 45, 30, 0.05)",
+        "card-lg": "0 2px 6px rgba(60, 45, 30, 0.08), 0 12px 32px rgba(60, 45, 30, 0.12)",
+        sheet: "0 -8px 32px rgba(60, 45, 30, 0.14)",
+        marker: "0 2px 4px rgba(44, 32, 21, 0.28)",
       },
       keyframes: {
         "fade-up": {
@@ -126,10 +137,9 @@ const config: Config = {
           "16%": { transform: "translateX(150%) skewX(-18deg)", opacity: "0" },
           "100%": { transform: "translateX(150%) skewX(-18deg)", opacity: "0" },
         },
-        /* 배지 테두리 광택 — 밝기만 아주 조금 오르내린다 */
-        "badge-glow": {
-          "0%, 100%": { opacity: "0.3" },
-          "50%": { opacity: "0.7" },
+        "sheet-up": {
+          "0%": { transform: "translateY(100%)" },
+          "100%": { transform: "translateY(0)" },
         },
       },
       animation: {
@@ -140,7 +150,7 @@ const config: Config = {
         "heart-pop": "heart-pop 0.35s ease-out",
         "toast-in": "toast-in 0.25s ease-out both",
         "cta-sweep": "cta-sweep 6s ease-in-out infinite",
-        "badge-glow": "badge-glow 4.5s ease-in-out infinite",
+        "sheet-up": "sheet-up 0.22s ease-out both",
       },
     },
   },
