@@ -1,12 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Info, List, Map as MapIcon, RotateCcw } from "lucide-react";
 import type { CafeMetrics, Plan } from "@/lib/types";
 import { CAFES, CAFE_MAP } from "@/lib/data/cafes";
 import { applyFilters } from "@/lib/filters";
 import { PURPOSE_LABEL, PURPOSE_WEIGHTS, rankByFit } from "@/lib/fit";
 import { dateKey } from "@/lib/time";
+import { buildExploreQuery, parseExploreQuery } from "@/lib/exploreQuery";
 import { useApp } from "@/lib/store";
 import { useFitContext } from "@/lib/useFitContext";
 import MapView from "@/components/MapView";
@@ -40,9 +41,33 @@ function CardSkeleton() {
 }
 
 export default function HomePage() {
-  const { area, filters, setFilters, plans, hydrated, setArea } = useApp();
+  const { area, filters, setFilters, plans, hydrated, setArea, timeSel, setTimeSel, setPurpose } = useApp();
   const { purpose, hour, now, timeLabel } = useFitContext();
   const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  // ---- 지도 상태 ↔ 주소 동기화 (새로고침·공유·뒤로가기에도 같은 화면) ----
+  const [urlApplied, setUrlApplied] = useState(false);
+  useEffect(() => {
+    if (!hydrated || urlApplied) return;
+    setUrlApplied(true);
+    // 주소에 있는 값만 적용한다 — 없으면 다른 화면에 다녀오기 전 상태를 그대로 쓴다
+    const q = parseExploreQuery(window.location.search);
+    if (q.area !== undefined) setArea(q.area);
+    if (q.time !== undefined) setTimeSel(q.time);
+    if (q.filters !== undefined) setFilters(q.filters);
+    if (q.purpose !== undefined && q.purpose !== purpose) setPurpose(q.purpose);
+    if (q.cafe) setSelectedId(q.cafe);
+  }, [hydrated, urlApplied, purpose, setArea, setTimeSel, setFilters, setPurpose]);
+
+  // 복원이 반영된 다음 렌더부터 주소에 쓴다 (복원 전 값으로 주소를 덮지 않게)
+  useEffect(() => {
+    if (!urlApplied) return;
+    const next = buildExploreQuery({ area, purpose, time: timeSel, filters, cafe: selectedId });
+    if (next !== window.location.search) {
+      // replaceState: 조건을 바꿀 때마다 기록이 쌓이지 않게 (Next App Router가 지원하는 방식)
+      window.history.replaceState(null, "", `${window.location.pathname}${next}`);
+    }
+  }, [urlApplied, area, purpose, timeSel, filters, selectedId]);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [sheet, setSheet] = useState<SheetState>("collapsed");
   const [aboutOpen, setAboutOpen] = useState(false);
@@ -75,6 +100,28 @@ export default function HomePage() {
   const plannedIds = useMemo(() => new Set(Object.keys(planByCafe)), [planByCafe]);
 
   const selected = selectedId ? cafes.find((c) => c.id === selectedId) ?? null : null;
+
+  // 키보드: "/" 검색으로 이동, Esc 선택 해제 (입력 중이거나 시트가 열려 있으면 무시)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement;
+      const typing = t.closest("input, textarea, select, [contenteditable=true]");
+      if (typing || e.metaKey || e.ctrlKey || e.altKey || document.querySelector("[role=dialog][aria-modal=true]")) return;
+      if (e.key === "/") {
+        e.preventDefault();
+        document.querySelector<HTMLInputElement>("[data-search-input]")?.focus();
+      } else if (e.key === "Escape") {
+        setSelectedId(null);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  // 조건이 바뀌어 고른 카페가 목록에서 빠지면 선택도 푼다 (주소에도 남지 않게)
+  useEffect(() => {
+    if (hydrated && now && selectedId && !selected) setSelectedId(null);
+  }, [hydrated, now, selectedId, selected]);
 
   const selectCafe = (id: string | null) => {
     setSelectedId(id);

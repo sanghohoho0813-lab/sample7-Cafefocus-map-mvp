@@ -39,6 +39,7 @@ import {
 import { calmestHour, fitCaution, fitReasons, fitScore, PURPOSES, rankByFit, verdict } from "@/lib/fit";
 import { dateKey, hm, relativeDate } from "@/lib/time";
 import { reviewsForCafe } from "@/lib/reviews";
+import { buildExploreQuery } from "@/lib/exploreQuery";
 import { useApp } from "@/lib/store";
 import { useFitContext } from "@/lib/useFitContext";
 import CafePhoto from "@/components/CafePhoto";
@@ -321,12 +322,13 @@ export default function CafeDetail({ cafe }: { cafe: Cafe }) {
             <Section title="작업 환경">
               <dl className="grid grid-cols-2 gap-x-6 gap-y-5 sm:grid-cols-3">
                 {env.map(({ icon: Icon, label, value }) => (
-                  <div key={label} className="flex items-start gap-3">
-                    <Icon size={19} className="mt-0.5 shrink-0 text-coffee-400" aria-hidden />
-                    <div className="min-w-0">
-                      <dt className="text-meta text-coffee-400">{label}</dt>
-                      <dd className="text-body font-semibold text-coffee-800">{value}</dd>
-                    </div>
+                  // dl의 자식은 dt/dd를 바로 담은 div만 허용된다 — 아이콘은 dt 안의 장식으로 둔다
+                  <div key={label} className="relative min-w-0 pl-8">
+                    <dt className="text-meta text-coffee-400">
+                      <Icon size={19} className="absolute left-0 top-0.5 text-coffee-400" aria-hidden />
+                      {label}
+                    </dt>
+                    <dd className="text-body font-semibold text-coffee-800">{value}</dd>
                   </div>
                 ))}
               </dl>
@@ -339,7 +341,13 @@ export default function CafeDetail({ cafe }: { cafe: Cafe }) {
                   <span>
                     {cafe.address}
                     <span className="block text-meta text-coffee-400">
-                      현재 위치(데모)에서 {formatDistance(distanceKm(cafe.lat, cafe.lng))}
+                      현재 위치(데모)에서 {formatDistance(distanceKm(cafe.lat, cafe.lng))} ·{" "}
+                      <Link
+                        href={`/${buildExploreQuery({ area: cafe.area, purpose, time: "now", filters: [], cafe: cafe.id }, { explicit: true })}`}
+                        className="font-semibold text-coffee-700 underline underline-offset-4"
+                      >
+                        지도에서 보기
+                      </Link>
                     </span>
                   </span>
                 </li>

@@ -10,7 +10,12 @@ const compat = new FlatCompat({ baseDirectory: __dirname });
 const eslintConfig = [
   ...compat.extends("next/core-web-vitals", "next/typescript"),
   {
-    ignores: [".next/**", "node_modules/**", "next-env.d.ts", "scripts/**", "public/**"],
+    ignores: [".next/**", "node_modules/**", "next-env.d.ts", "scripts/**", "public/**", "playwright-report/**", "test-results/**"],
+  },
+  {
+    // Playwright fixture의 use()는 React 훅이 아니다
+    files: ["tests/**/*.ts"],
+    rules: { "react-hooks/rules-of-hooks": "off" },
   },
   {
     rules: {

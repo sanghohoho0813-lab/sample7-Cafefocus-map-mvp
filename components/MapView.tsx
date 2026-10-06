@@ -369,6 +369,7 @@ export default function MapView({
           <div
             className="absolute -translate-x-1/2 -translate-y-1/2"
             style={placeStyle(me.x, me.y, zoom, pan)}
+            role="img"
             aria-label="현재 위치 (데모)"
           >
             <span className="absolute inset-0 rounded-full bg-sky-400/50 animate-pulse-ring" />

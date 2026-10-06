@@ -93,7 +93,18 @@ export default function SearchBox({
           aria-controls={listId}
           aria-autocomplete="list"
           aria-label="지역·역·카페 검색"
+          aria-keyshortcuts="/"
+          data-search-input
         />
+        {!query && (
+          <kbd
+            className="hidden h-6 min-w-6 items-center justify-center rounded-md border border-cream-300 bg-cream-50 px-1.5 text-caption font-semibold text-coffee-400 lg:inline-flex"
+            title="/ 키로 바로 검색"
+            aria-hidden
+          >
+            /
+          </kbd>
+        )}
         {query && (
           <button
             type="button"

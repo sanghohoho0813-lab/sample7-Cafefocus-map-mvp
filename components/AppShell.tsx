@@ -64,6 +64,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex h-[100dvh] w-full flex-col overflow-hidden">
+      {/* 키보드 사용자는 메뉴를 건너뛰고 바로 본문으로 */}
+      <a
+        href="#main"
+        className="sr-only z-[90] rounded-lg bg-coffee-900 px-4 py-2 text-label text-white focus:not-sr-only focus:fixed focus:left-3 focus:top-3"
+      >
+        본문으로 건너뛰기
+      </a>
       <TopBrandBar />
       <div className="flex min-h-0 flex-1">
         {/* ---------- Desktop sidebar ---------- */}
@@ -122,7 +129,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
         {/* ---------- Main ---------- */}
         <div className="relative flex min-w-0 flex-1 flex-col">
-          <main className="min-h-0 flex-1 overflow-hidden">{children}</main>
+          <main id="main" tabIndex={-1} className="min-h-0 flex-1 overflow-hidden focus:outline-none">
+            {children}
+          </main>
 
           {!hideMobileNav && (
             <nav

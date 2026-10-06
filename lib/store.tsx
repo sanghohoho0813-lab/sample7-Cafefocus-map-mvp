@@ -23,8 +23,7 @@ import type {
 import { CAFE_MAP } from "@/lib/data/cafes";
 import { buildSeed } from "@/lib/data/seed";
 import { validatePlan } from "@/lib/plans";
-import { PURPOSE_LABEL } from "@/lib/fit";
-import { PRIORITIES, STAY_OPTIONS } from "@/lib/recommendation";
+import { isArray, isPlan, isPrefs, isReview, isStringArray, keepValid, read, write } from "@/lib/storage";
 
 /*
  * 데모 모드 상태 저장소.
@@ -92,78 +91,6 @@ interface AppState {
 }
 
 const AppContext = createContext<AppState | null>(null);
-
-/* ---------------- 저장소 유틸 (손상된 값은 버린다) ---------------- */
-
-function read<T>(key: string, guard: (v: unknown) => v is T, fallback: T): T {
-  try {
-    const raw = window.localStorage.getItem(key);
-    if (raw === null) return fallback;
-    const parsed: unknown = JSON.parse(raw);
-    return guard(parsed) ? parsed : fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-function write(key: string, value: unknown) {
-  try {
-    window.localStorage.setItem(key, JSON.stringify(value));
-  } catch {
-    // 저장소를 쓸 수 없는 환경(시크릿 모드 등) — 메모리 상태로만 동작
-  }
-}
-
-const isStringArray = (v: unknown): v is string[] =>
-  Array.isArray(v) && v.every((x) => typeof x === "string");
-
-const PURPOSE_KEYS = new Set<string>(Object.keys(PURPOSE_LABEL));
-const PRIORITY_KEYS = new Set<string>(PRIORITIES.map((p) => p.key));
-const STAY_KEYS = new Set<string>(STAY_OPTIONS.map((o) => o.key));
-const STATUS_KEYS = new Set<string>(["planned", "completed", "cancelled"]);
-
-const isObj = (v: unknown): v is Record<string, unknown> => Boolean(v) && typeof v === "object";
-
-const isPlan = (p: unknown): p is Plan =>
-  isObj(p) &&
-  typeof p.id === "string" &&
-  typeof p.cafeId === "string" &&
-  Boolean(CAFE_MAP[p.cafeId]) &&
-  typeof p.date === "string" &&
-  /^\d{4}-\d{2}-\d{2}$/.test(p.date) &&
-  typeof p.startHour === "number" &&
-  p.startHour >= 0 &&
-  p.startHour <= 23 &&
-  typeof p.durationMin === "number" &&
-  p.durationMin > 0 &&
-  typeof p.purpose === "string" &&
-  PURPOSE_KEYS.has(p.purpose) &&
-  typeof p.status === "string" &&
-  STATUS_KEYS.has(p.status);
-
-const isReview = (r: unknown): r is UserReview =>
-  isObj(r) &&
-  typeof r.id === "string" &&
-  typeof r.cafeId === "string" &&
-  Boolean(CAFE_MAP[r.cafeId]) &&
-  typeof r.rating === "number" &&
-  r.rating >= 1 &&
-  r.rating <= 5 &&
-  typeof r.purpose === "string" &&
-  PURPOSE_KEYS.has(r.purpose);
-
-/** 배열 안의 손상된 항목만 버린다 (하나가 깨졌다고 전체 기록을 잃지 않게) */
-const isArray = (v: unknown): v is unknown[] => Array.isArray(v);
-const keepValid = <T,>(list: unknown[], item: (v: unknown) => v is T): T[] => list.filter(item);
-
-const isPrefs = (v: unknown): v is Prefs =>
-  isObj(v) &&
-  typeof v.purpose === "string" &&
-  PURPOSE_KEYS.has(v.purpose) &&
-  Array.isArray(v.priorities) &&
-  v.priorities.every((k) => typeof k === "string" && PRIORITY_KEYS.has(k)) &&
-  typeof v.stay === "string" &&
-  STAY_KEYS.has(v.stay);
 
 const uid = (prefix: string) =>
   `${prefix}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;

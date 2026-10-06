@@ -25,7 +25,7 @@ export const FILTER_HINT: Record<FilterKey, string> = {
   wifi: "80Mbps 이상, 화상회의 가능",
   bigTable: "노트북과 자료를 함께 펼칠 수 있는 테이블",
   longStay: "평균 체류 2시간 이상, 눈치 보지 않는 분위기",
-  lateNight: "밤 11시 이후까지 영업",
+  lateNight: "밤 11시 이후 마감",
 };
 
 export function matchesFilter(cafe: Cafe, key: FilterKey, hour: number): boolean {
