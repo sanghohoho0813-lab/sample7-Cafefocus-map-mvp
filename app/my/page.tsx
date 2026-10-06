@@ -13,6 +13,7 @@ import { useApp } from "@/lib/store";
 import { useNow } from "@/lib/useNow";
 import CafePhoto from "@/components/CafePhoto";
 import Sheet from "@/components/Sheet";
+import PageSkeleton from "@/components/PageSkeleton";
 import SampleBridgeCTA from "@/components/SampleBridgeCTA";
 
 function SectionTitle({ children, action }: { children: React.ReactNode; action?: React.ReactNode }) {
@@ -60,9 +61,7 @@ export default function MyPage() {
       : "없음";
   const stayText = STAY_OPTIONS.find((s) => s.key === prefs.stay)?.label ?? "";
 
-  if (!hydrated) {
-    return <div className="h-full bg-cream-50" aria-busy />;
-  }
+  if (!hydrated) return <PageSkeleton />;
 
   return (
     <div className="h-full overflow-y-auto bg-cream-50">

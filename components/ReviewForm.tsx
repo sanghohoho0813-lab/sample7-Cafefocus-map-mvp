@@ -13,6 +13,7 @@ import { useNow } from "@/lib/useNow";
 import { useApp } from "@/lib/store";
 import CafePhoto from "@/components/CafePhoto";
 import EmptyState from "@/components/EmptyState";
+import PageSkeleton from "@/components/PageSkeleton";
 
 const VISIT_OPTIONS = ["평일 오전", "평일 오후", "평일 저녁", "주말 오전", "주말 오후", "주말 저녁"];
 
@@ -101,7 +102,7 @@ export default function ReviewForm({ cafe }: { cafe: Cafe }) {
   ].filter(Boolean) as string[];
   const valid = missing.length === 0;
 
-  if (!hydrated) return null;
+  if (!hydrated) return <PageSkeleton variant="form" />;
 
   // 이미 기록을 마친 계획이라면 다시 쓰지 않게 안내
   if (plan && plan.status === "completed") {

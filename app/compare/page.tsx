@@ -23,6 +23,7 @@ import { useFitContext } from "@/lib/useFitContext";
 import CafePhoto from "@/components/CafePhoto";
 import EmptyState from "@/components/EmptyState";
 import Sheet from "@/components/Sheet";
+import PageSkeleton from "@/components/PageSkeleton";
 import ScorePill from "@/components/ScorePill";
 
 const CROWD_SHORT = { quiet: "한산", normal: "보통", busy: "혼잡" } as const;
@@ -128,7 +129,7 @@ export default function ComparePage() {
     </Sheet>
   );
 
-  if (!hydrated) return <div className="h-full bg-cream-50" aria-busy />;
+  if (!hydrated) return <PageSkeleton />;
 
   return (
     <div className="h-full overflow-y-auto bg-cream-50">

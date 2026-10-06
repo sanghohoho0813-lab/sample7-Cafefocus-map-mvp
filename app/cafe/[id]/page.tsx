@@ -11,8 +11,12 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const { id } = await params;
   const cafe = getCafe(id);
   return cafe
-    ? { title: `${cafe.name} — CafeFocus`, description: cafe.description }
-    : { title: "CafeFocus" };
+    ? {
+        title: cafe.name,
+        description: cafe.description,
+        openGraph: { title: cafe.name, description: cafe.description, images: [{ url: `/images/cafes/${cafe.id}.webp`, width: 1440, height: 810 }] },
+      }
+    : {};
 }
 
 export default async function CafeDetailPage({ params }: { params: Promise<{ id: string }> }) {
