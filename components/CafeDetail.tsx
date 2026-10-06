@@ -184,8 +184,9 @@ export default function CafeDetail({ cafe }: { cafe: Cafe }) {
   );
 
   // 이 시간이 영업 외라면 CTA는 시간 없이 계획 화면으로 보낸다
-  const planHref = `/cafe/${cafe.id}/plan${open ? `?hour=${hour}` : ""}`;
-  const ctaLabel = open ? `${hour}시에 여기서 작업하기` : "작업 계획 세우기";
+  // 이미 예정된 작업이 있으면 주 행동은 그 일정 보기 (같은 시간으로 또 계획하면 겹침 오류만 나므로)
+  const planHref = myPlan ? `/plans/${myPlan.id}` : `/cafe/${cafe.id}/plan${open ? `?hour=${hour}` : ""}`;
+  const ctaLabel = myPlan ? "예정된 작업 보기" : open ? `${hour}시에 여기서 작업하기` : "작업 계획 세우기";
 
   const env = [
     { icon: Volume2, label: "소음", value: noiseLabel(cafe.metrics.noiseScore) },
@@ -215,10 +216,7 @@ export default function CafeDetail({ cafe }: { cafe: Cafe }) {
   );
 
   const planBanner = myPlan && (
-    <Link
-      href={`/plans/${myPlan.id}`}
-      className="flex items-center gap-3 rounded-xl bg-coffee-800 px-4 py-3 text-cream-50 transition-colors hover:bg-coffee-700"
-    >
+    <div className="flex items-center gap-3 rounded-xl bg-coffee-800 px-4 py-3 text-cream-50">
       <CalendarCheck2 size={18} className="shrink-0" />
       <span className="min-w-0 flex-1 text-meta">
         <b className="num font-semibold">
@@ -226,10 +224,13 @@ export default function CafeDetail({ cafe }: { cafe: Cafe }) {
         </b>{" "}
         작업 예정이에요
       </span>
-      <span className="flex shrink-0 items-center gap-1 text-label">
-        일정 보기 <ArrowRight size={15} />
-      </span>
-    </Link>
+      <Link
+        href={`/cafe/${cafe.id}/plan`}
+        className="flex shrink-0 items-center gap-1 text-label text-cream-100 underline-offset-4 hover:underline"
+      >
+        다른 시간 추가
+      </Link>
+    </div>
   );
 
   return (
@@ -424,7 +425,7 @@ export default function CafeDetail({ cafe }: { cafe: Cafe }) {
       </div>
 
       {/* ---------- 모바일: 하단 고정 CTA ---------- */}
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-cream-300/70 bg-white/95 px-4 pb-[max(12px,env(safe-area-inset-bottom))] pt-3 backdrop-blur lg:hidden">
+      <div data-bottom-bar className="fixed inset-x-0 bottom-0 z-40 border-t border-cream-300/70 bg-white/95 px-4 pb-[max(12px,env(safe-area-inset-bottom))] pt-3 backdrop-blur lg:hidden">
         <div className="mx-auto flex max-w-xl items-center gap-2">
           <FavoriteButton cafeId={cafe.id} />
           <CompareToggle cafeId={cafe.id} compact />

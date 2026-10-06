@@ -174,7 +174,7 @@ export default function HomePage() {
           <MobileBottomSheet
             state={sheet}
             onStateChange={setSheet}
-            collapsedHeight={peek ? 196 : 92}
+            collapsedHeight={peek ? 236 : 132}
             header={
               <div className="flex items-center justify-between gap-3">
                 {listHeading}
@@ -217,7 +217,7 @@ export default function HomePage() {
               기준 보기
             </button>
           </div>
-          <div className="min-h-0 flex-1 space-y-2.5 overflow-y-auto p-4">
+          <div className="min-h-0 flex-1 space-y-2.5 overflow-y-auto p-4 pb-24">
             {!ready ? (
               <>
                 <CardSkeleton />

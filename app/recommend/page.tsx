@@ -90,7 +90,11 @@ export default function RecommendPage() {
                   <button
                     key={p.key}
                     type="button"
-                    onClick={() => setPurpose(p.key)}
+                    onClick={() => {
+                      setPurpose(p.key);
+                      // 하나만 고르는 단계라 고르면 바로 다음으로 (선택 표시가 보이도록 잠깐 뒤에)
+                      window.setTimeout(() => setStep(1), 160);
+                    }}
                     aria-pressed={active}
                     className={`flex items-center gap-4 rounded-2xl border bg-white p-4 text-left transition-colors ${
                       active ? "border-coffee-800 ring-1 ring-coffee-800" : "border-cream-300 hover:border-coffee-300"
@@ -208,7 +212,7 @@ export default function RecommendPage() {
             ) : (
               <article className="mt-6 overflow-hidden rounded-2xl border border-cream-300/80 bg-white">
                 <div className="relative">
-                  <CafePhoto cafe={top.cafe} variant="wide" className="aspect-[16/9] w-full" sizes="(max-width: 768px) 100vw, 720px" />
+                  <CafePhoto cafe={top.cafe} variant="wide" className="aspect-[16/9] w-full sm:aspect-[2.2/1]" sizes="(max-width: 768px) 100vw, 720px" />
                   <FavoriteButton cafeId={top.cafe.id} onImage className="absolute right-3 top-3" />
                 </div>
                 <div className="p-5 sm:p-6">

@@ -31,7 +31,8 @@ export default function FavoriteButton({
         window.setTimeout(() => setPopping(false), 350);
         showToast(
           added ? `저장했어요 · ${name}` : `저장을 해제했어요 · ${name}`,
-          added ? { label: "저장 목록", href: "/favorites" } : undefined
+          // 해제는 실수로 누르기 쉬워 바로 되돌릴 수 있게
+          added ? { label: "저장 목록", href: "/favorites" } : { label: "되돌리기", onClick: () => toggleFavorite(cafeId) }
         );
       }}
       className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-coffee-600 ${

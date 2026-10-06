@@ -36,6 +36,8 @@ export default function Sheet({
     const prevFocus = document.activeElement as HTMLElement | null;
     const prevOverflow = document.documentElement.style.overflow;
     document.documentElement.style.overflow = "hidden";
+    // 열려 있는 동안 화면 위에 떠 있는 공용 뒤로·앞으로 버튼을 숨긴다 (시트 버튼을 가리지 않게)
+    document.documentElement.dataset.sheetOpen = "true";
     panelRef.current?.focus();
 
     const onKey = (e: KeyboardEvent) => {
@@ -61,6 +63,7 @@ export default function Sheet({
     return () => {
       document.removeEventListener("keydown", onKey);
       document.documentElement.style.overflow = prevOverflow;
+      delete document.documentElement.dataset.sheetOpen;
       prevFocus?.focus?.();
     };
   }, [open]);

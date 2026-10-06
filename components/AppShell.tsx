@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Map as MapIcon, Target, Heart, Scale, CalendarCheck2, ChevronRight } from "lucide-react";
@@ -53,6 +54,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   };
 
   const hideMobileNav = FOCUSED_ROUTE.test(pathname);
+
+  // 공용 뒤로·앞으로 버튼은 resize 때 자리를 다시 고른다.
+  // 화면 전환 직후엔 하단 고정 바가 아직 없을 수 있어, 그려진 뒤 한 번 더 알려준다.
+  useEffect(() => {
+    const t = window.setTimeout(() => window.dispatchEvent(new Event("resize")), 700);
+    return () => window.clearTimeout(t);
+  }, [pathname]);
 
   return (
     <div className="flex h-[100dvh] w-full flex-col overflow-hidden">
@@ -118,7 +126,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
           {!hideMobileNav && (
             <nav
-              className="z-40 flex shrink-0 items-stretch border-t border-cream-300/70 bg-white pb-[env(safe-area-inset-bottom)] lg:hidden"
+              data-bottom-bar
+              className="sticky bottom-0 z-40 flex shrink-0 items-stretch border-t border-cream-300/70 bg-white pb-[env(safe-area-inset-bottom)] lg:hidden"
               aria-label="하단 메뉴"
             >
               {MOBILE_NAV.map(({ href, label, icon: Icon }) => {
@@ -148,7 +157,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             </nav>
           )}
 
-          <Toasts raised={hideMobileNav} />
+          <Toasts />
         </div>
       </div>
     </div>

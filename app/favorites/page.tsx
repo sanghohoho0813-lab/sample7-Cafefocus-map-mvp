@@ -72,7 +72,7 @@ export default function FavoritesPage() {
                   now={now}
                   variant="tile"
                   highlighted={compare.includes(cafe.id)}
-                  footer={<CompareToggle cafeId={cafe.id} className="-ml-3" />}
+                  footer={<CompareToggle cafeId={cafe.id} quiet className="-ml-3" />}
                 />
               ))}
             </div>
@@ -82,8 +82,8 @@ export default function FavoritesPage() {
 
       {/* 비교함이 채워지면 다음 행동을 하단에 고정 */}
       {hydrated && compare.length > 0 && (
-        <div className="shrink-0 border-t border-cream-300/70 bg-white px-4 py-3">
-          <div className="mx-auto flex max-w-5xl items-center justify-between gap-3">
+        <div data-bottom-bar className="sticky bottom-0 z-30 shrink-0 border-t border-cream-300/70 bg-white py-3">
+          <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 sm:px-6">
             <p className="text-meta text-coffee-600">
               비교함 <b className="num text-coffee-900">{compare.length}</b>/3
               {!canCompare && <span className="text-coffee-400"> · 1곳 더 담아주세요</span>}

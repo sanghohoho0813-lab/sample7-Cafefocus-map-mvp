@@ -118,6 +118,11 @@ body {
   }
 }
 
+/* 시트(모달)가 열려 있는 동안 공용 뒤로·앞으로 버튼 숨김 */
+html[data-sheet-open] [data-mirae-history-nav] {
+  display: none !important;
+}
+
 /* 움직임 줄이기 설정 존중 */
 @media (prefers-reduced-motion: reduce) {
   *,

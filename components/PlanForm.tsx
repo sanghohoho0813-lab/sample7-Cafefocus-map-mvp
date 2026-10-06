@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, AlertCircle, Loader2 } from "lucide-react";
 import type { Cafe, Purpose } from "@/lib/types";
@@ -9,7 +8,7 @@ import { AREA_MAP, CAFE_MAP } from "@/lib/data/cafes";
 import { formatHours, hourlyAt, isOpenAt, levelOf } from "@/lib/scoring";
 import { fitScore, PURPOSES, PURPOSE_LABEL } from "@/lib/fit";
 import { DURATION_OPTIONS, findConflict, isPastSlot, maxDurationFor, startHoursFor } from "@/lib/plans";
-import { addDays, dateKey, dateWithRelative, formatDate, formatDuration, timeRange } from "@/lib/time";
+import { addDays, dateKey, dateWithRelative, formatDate, formatDuration, relativeDate, timeRange } from "@/lib/time";
 import { useApp } from "@/lib/store";
 import { useNow } from "@/lib/useNow";
 import CafePhoto from "@/components/CafePhoto";
@@ -41,7 +40,7 @@ export default function PlanForm({ cafe }: { cafe: Cafe }) {
   const router = useRouter();
   const params = useSearchParams();
   const now = useNow();
-  const { prefs, plans, createPlan, showToast, hydrated } = useApp();
+  const { prefs, plans, createPlan, hydrated } = useApp();
 
   const hours = useMemo(() => startHoursFor(cafe), [cafe]);
   const todayKey = now ? dateKey(now) : null;
@@ -66,15 +65,14 @@ export default function PlanForm({ cafe }: { cafe: Cafe }) {
     setPurpose(prefs.purpose);
     const wanted = Number(params.get("hour"));
     const wantedValid = hours.includes(wanted);
-    if (wantedValid && !isPastSlot(todayKey, wanted, now)) {
-      setDate(todayKey);
-      setStartHour(wanted);
-    } else if (wantedValid) {
-      setDate(tomorrowKey);
-      setStartHour(wanted);
-    } else {
-      setDate(todayHasSlots ? todayKey : tomorrowKey);
-    }
+    const day = wantedValid && isPastSlot(todayKey, wanted, now) ? tomorrowKey : todayHasSlots ? todayKey : tomorrowKey;
+    setDate(day);
+    // 고른 시간이 이미 다른 계획과 겹치면 미리 채우지 않는다 (처음부터 오류 화면을 보이지 않게)
+    const clash =
+      wantedValid &&
+      findConflict({ cafeId: cafe.id, date: day, startHour: wanted, durationMin: 120, purpose: prefs.purpose, memo: "" }, plans);
+    if (wantedValid && !clash) setStartHour(wanted);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 첫 진입 한 번만 (plans 변화로 다시 채우지 않음)
   }, [now, hydrated, params, hours, todayKey, tomorrowKey, todayHasSlots, prefs.purpose]);
 
   // 시작 시간이 바뀌어 마감을 넘기면 가능한 최대 시간으로 줄인다
@@ -89,6 +87,16 @@ export default function PlanForm({ cafe }: { cafe: Cafe }) {
     [cafe.id, date, startHour, durationMin, purpose, memo]
   );
   const conflict = input ? findConflict(input, plans) : null;
+
+  /** 다른 예정 작업이 이미 차지한 "날짜:시" — 시간 칸에 미리 표시해 겹침을 고르기 전에 알 수 있게 */
+  const busyHours = useMemo(() => {
+    const set = new Set<string>();
+    for (const p of plans) {
+      if (p.status !== "planned") continue;
+      for (let h = p.startHour; h < p.startHour + Math.ceil(p.durationMin / 60); h++) set.add(`${p.date}:${h}`);
+    }
+    return set;
+  }, [plans]);
   const ready = Boolean(input) && !conflict;
 
   const summary = useMemo(() => {
@@ -119,7 +127,6 @@ export default function PlanForm({ cafe }: { cafe: Cafe }) {
         return;
       }
       submittedRef.current = true;
-      showToast("작업 계획을 저장했어요");
       // replace: 완료 화면에서 뒤로 가도 폼으로 돌아와 다시 제출하지 않게
       router.replace(`/plans/${result.plan.id}?new=1`);
     }, 450);
@@ -129,9 +136,15 @@ export default function PlanForm({ cafe }: { cafe: Cafe }) {
     <form onSubmit={submit} className="flex h-full flex-col bg-cream-50" noValidate>
       {/* ---------- 헤더 ---------- */}
       <div className="flex h-14 shrink-0 items-center gap-2 border-b border-cream-300/70 bg-white px-2 lg:px-6">
-        <Link href={`/cafe/${cafe.id}`} className="flex h-10 w-10 items-center justify-center rounded-full text-coffee-700 hover:bg-cream-100" aria-label="카페 상세로 돌아가기">
+        {/* 온 곳(상세·비교·추천)으로 돌아간다. 새 탭으로 바로 들어왔으면 카페 상세로 */}
+        <button
+          type="button"
+          onClick={() => (window.history.length > 1 ? router.back() : router.push(`/cafe/${cafe.id}`))}
+          className="flex h-10 w-10 items-center justify-center rounded-full text-coffee-700 hover:bg-cream-100"
+          aria-label="뒤로 가기"
+        >
           <ArrowLeft size={20} />
-        </Link>
+        </button>
         <h1 className="text-title text-coffee-900">작업 계획 만들기</h1>
       </div>
 
@@ -182,21 +195,22 @@ export default function PlanForm({ cafe }: { cafe: Cafe }) {
               <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
                 {hours.map((h) => {
                   const past = date ? isPastSlot(date, h, now) : true;
+                  const taken = date ? busyHours.has(`${date}:${h}`) : false;
                   const lv = levelOf(hourlyAt(cafe, h).crowd);
                   const active = startHour === h;
                   return (
                     <button
                       key={h}
                       type="button"
-                      disabled={past || !date}
+                      disabled={past || taken || !date}
                       onClick={() => setStartHour(h)}
-                      className={`option h-16 flex-col gap-1 disabled:cursor-not-allowed disabled:opacity-35 ${active ? "option-active" : "option-idle"}`}
+                      className={`option h-16 flex-col gap-1 disabled:cursor-not-allowed ${taken ? "disabled:opacity-60" : "disabled:opacity-35"} ${active ? "option-active" : "option-idle"}`}
                       aria-pressed={active}
-                      aria-label={`${h}시, 예상 ${LEVEL_WORD[lv]}${past ? ", 지난 시간" : ""}`}
+                      aria-label={`${h}시, ${taken ? "이미 일정 있음" : `예상 ${LEVEL_WORD[lv]}`}${past ? ", 지난 시간" : ""}`}
                     >
                       <span className="num text-body font-bold">{h}:00</span>
-                      <span className={`text-caption ${active ? "text-cream-100" : lv === "busy" ? "text-coffee-700 font-semibold" : "text-coffee-400"}`}>
-                        {LEVEL_WORD[lv]}
+                      <span className={`text-caption ${active ? "text-cream-100" : taken ? "font-semibold text-coffee-600" : lv === "busy" ? "font-semibold text-coffee-700" : "text-coffee-400"}`}>
+                        {taken && !past ? "일정 있음" : LEVEL_WORD[lv]}
                       </span>
                     </button>
                   );
@@ -304,11 +318,27 @@ export default function PlanForm({ cafe }: { cafe: Cafe }) {
       </div>
 
       {/* 모바일 하단 고정 저장 */}
-      <div className="shrink-0 border-t border-cream-300/70 bg-white px-4 pb-[max(12px,env(safe-area-inset-bottom))] pt-3 lg:hidden">
-        <button type="submit" disabled={!ready || submitting} className="btn-primary w-full">
+      <div data-bottom-bar className="sticky bottom-0 z-30 shrink-0 border-t border-cream-300/70 bg-white px-4 pb-[max(12px,env(safe-area-inset-bottom))] pt-2.5 lg:hidden">
+        {/* 무엇을 저장하는지 / 왜 저장할 수 없는지를 버튼 바로 위에서 알려준다 (요약은 화면 맨 아래라 안 보일 수 있음) */}
+        <div className="sm:flex sm:items-center sm:gap-4">
+        {conflict || error ? (
+          <p className="mb-2 flex items-center justify-center gap-1.5 text-center text-meta font-medium text-red-700 sm:mb-0 sm:flex-1 sm:justify-start sm:text-left">
+            <AlertCircle size={15} className="shrink-0" />
+            <span className="truncate">
+              {error ?? `${CAFE_MAP[conflict!.cafeId]?.name ?? "다른 카페"} 일정과 겹쳐요 · 시간을 바꿔주세요`}
+            </span>
+          </p>
+        ) : input && date ? (
+          <p className="num mb-2 truncate text-center text-meta text-coffee-600 sm:mb-0 sm:flex-1 sm:text-left">
+            <b className="font-semibold text-coffee-900">{relativeDate(date, now)}</b> {timeRange(input.startHour, input.durationMin)} ·{" "}
+            {PURPOSE_LABEL[input.purpose]}
+          </p>
+        ) : null}
+        <button type="submit" disabled={!ready || submitting} className="btn-primary w-full sm:ml-auto sm:w-auto sm:min-w-[240px]">
           {submitting ? <Loader2 size={18} className="animate-spin" /> : null}
           {submitting ? "저장하는 중…" : input ? "작업 계획 저장" : "도착 시간을 골라주세요"}
         </button>
+        </div>
       </div>
     </form>
   );

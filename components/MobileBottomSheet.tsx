@@ -53,11 +53,12 @@ export default function MobileBottomSheet({
         else if (dy > 40) step(-1);
       }}
     >
+      {/* 핸들 탭: 접힘 → 절반 → 펼침 → 다시 접힘 (탭만으로도 지도로 돌아올 수 있게) */}
       <button
         type="button"
-        onClick={() => step(state === "expanded" ? -1 : 1)}
-        className="flex h-6 w-full shrink-0 items-center justify-center"
-        aria-label={state === "expanded" ? "목록 줄이기" : "목록 더 보기"}
+        onClick={() => (state === "expanded" ? onStateChange("collapsed") : step(1))}
+        className="flex h-7 w-full shrink-0 items-center justify-center"
+        aria-label={state === "expanded" ? "목록 접고 지도 보기" : "목록 더 보기"}
         data-sheet-handle
       >
         <span className="h-1 w-10 rounded-full bg-cream-400" />
@@ -65,7 +66,10 @@ export default function MobileBottomSheet({
       {header && <div className="shrink-0 px-4 pb-2">{header}</div>}
       <div
         data-sheet-body
-        className={`min-h-0 flex-1 px-4 pb-4 ${state === "collapsed" ? "overflow-hidden" : "overflow-y-auto overscroll-contain"}`}
+        className={`min-h-0 flex-1 px-4 ${
+          // 아래쪽은 공용 뒤로·앞으로 버튼 자리 — 카드가 그 밑에 깔리지 않게 비워 둔다
+          state === "collapsed" ? "overflow-hidden pb-14" : "overflow-y-auto overscroll-contain pb-20"
+        }`}
       >
         {children}
       </div>

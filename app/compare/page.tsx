@@ -61,46 +61,69 @@ export default function ComparePage() {
     if (!row.rank || cafes.length < 2) return null;
     const vals = cafes.map((c) => row.rank!(c, hour));
     const max = Math.max(...vals);
-    // 모두 같으면 강조하지 않는다
-    if (vals.every((v) => v === max)) return null;
-    return vals.indexOf(max);
+    const best = vals.indexOf(max);
+    // 화면에 보이는 값이 같은 칸이 있으면 강조하지 않는다 ("한산" vs "한산 ✓"처럼 모순돼 보이지 않게)
+    const shown = cafes.map((c) => row.value(c, hour));
+    if (shown.some((v, i) => i !== best && v === shown[best])) return null;
+    return best;
   };
 
   const winner = cafes.length >= 2 ? rankByFit(cafes, purpose, hour)[0] : null;
   const winnerReasons = winner ? fitReasons(winner.cafe, purpose, hour, 3) : [];
 
+  // 이미 담은 카페도 목록에 남겨 두고 체크 표시로 켜고 끈다 (시트를 닫지 않고 여러 곳을 고를 수 있게)
   const candidates = useMemo(() => {
-    const pool = CAFES.filter((c) => !compare.includes(c.id));
-    const saved = rankByFit(pool.filter((c) => favorites.includes(c.id)), purpose, hour);
-    const others = rankByFit(pool.filter((c) => !favorites.includes(c.id)), purpose, hour);
-    return [...saved.map((r) => ({ ...r, saved: true })), ...others.map((r) => ({ ...r, saved: false }))].slice(0, 12);
-  }, [compare, favorites, purpose, hour]);
+    const saved = rankByFit(CAFES.filter((c) => favorites.includes(c.id)), purpose, hour);
+    const others = rankByFit(CAFES.filter((c) => !favorites.includes(c.id)), purpose, hour);
+    return [...saved.map((r) => ({ ...r, saved: true })), ...others.map((r) => ({ ...r, saved: false }))];
+  }, [favorites, purpose, hour]);
 
   const picker = (
-    <Sheet open={pickerOpen} onClose={() => setPickerOpen(false)} title="비교할 카페 추가" description="저장한 카페가 먼저 보여요.">
+    <Sheet
+      open={pickerOpen}
+      onClose={() => setPickerOpen(false)}
+      title="비교할 카페 고르기"
+      description={`최대 3곳 · ${favorites.length ? "저장한 카페가 먼저 보여요" : "지금 기준 적합도순"}`}
+      footer={
+        <button type="button" onClick={() => setPickerOpen(false)} className="btn-primary flex-1">
+          {compare.length >= 2 ? `${compare.length}곳 비교하기` : compare.length === 1 ? "1곳 더 골라주세요" : "닫기"}
+        </button>
+      }
+    >
       <ul className="divide-y divide-cream-200">
-        {candidates.map(({ cafe, score, saved }) => (
-          <li key={cafe.id}>
-            <button
-              type="button"
-              onClick={() => {
-                toggleCompare(cafe.id);
-                setPickerOpen(false);
-              }}
-              className="flex w-full items-center gap-3 py-3 text-left"
-            >
-              <CafePhoto cafe={cafe} className="h-12 w-12 shrink-0 rounded-lg" sizes="48px" overlay={false} />
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-body font-semibold text-coffee-900">{cafe.name}</span>
-                <span className="block truncate text-meta text-coffee-400">
-                  {AREA_MAP[cafe.area].name}
-                  {saved ? " · 저장함" : ""}
+        {candidates.map(({ cafe, score, saved }) => {
+          const on = compare.includes(cafe.id);
+          const full = !on && compare.length >= 3;
+          return (
+            <li key={cafe.id}>
+              <button
+                type="button"
+                disabled={full}
+                onClick={() => toggleCompare(cafe.id)}
+                aria-pressed={on}
+                className="flex w-full items-center gap-3 py-3 text-left disabled:opacity-40"
+              >
+                <span
+                  className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-2 transition-colors ${
+                    on ? "border-coffee-800 bg-coffee-800 text-white" : "border-cream-400 bg-white"
+                  }`}
+                  aria-hidden
+                >
+                  {on && <Check size={15} strokeWidth={3} />}
                 </span>
-              </span>
-              <ScorePill score={score} />
-            </button>
-          </li>
-        ))}
+                <CafePhoto cafe={cafe} className="h-12 w-12 shrink-0 rounded-lg" sizes="48px" overlay={false} />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-body font-semibold text-coffee-900">{cafe.name}</span>
+                  <span className="block truncate text-meta text-coffee-400">
+                    {AREA_MAP[cafe.area].name}
+                    {saved ? " · 저장함" : ""}
+                  </span>
+                </span>
+                <ScorePill score={score} />
+              </button>
+            </li>
+          );
+        })}
       </ul>
     </Sheet>
   );
@@ -136,16 +159,12 @@ export default function ComparePage() {
             <EmptyState
               icon={Scale}
               title="비교할 카페를 2~3곳 담아보세요"
-              description="저장한 카페나 상세 화면에서 '비교 담기'를 누르면 여기서 나란히 볼 수 있어요."
+              description="고른 곳들을 시간대 혼잡·소음·콘센트까지 나란히 보고, 가장 잘 맞는 곳을 알려드려요."
               action={
-                <div className="flex flex-wrap justify-center gap-2">
-                  <Link href="/favorites" className="btn-primary h-11">
-                    저장한 카페에서 고르기
-                  </Link>
-                  <button type="button" onClick={() => setPickerOpen(true)} className="btn-secondary h-11">
-                    직접 추가
-                  </button>
-                </div>
+                <button type="button" onClick={() => setPickerOpen(true)} className="btn-primary h-11">
+                  <Plus size={17} />
+                  카페 고르기
+                </button>
               }
             />
           </div>
@@ -181,7 +200,7 @@ export default function ComparePage() {
             {/* ---------- 근거 표 ---------- */}
             <div className="mt-6 overflow-x-auto rounded-2xl border border-cream-300/80 bg-white">
               {/* 2곳은 모바일 폭에 맞추고, 3곳일 때만 가로 스크롤 */}
-              <table className={`w-full border-collapse text-left ${cafes.length >= 3 ? "min-w-[600px]" : "sm:min-w-[560px]"}`}>
+              <table className={`w-full table-fixed border-collapse text-left ${cafes.length >= 3 ? "min-w-[600px]" : "sm:min-w-[560px]"}`}>
                 <caption className="sr-only">카페별 작업 환경 비교</caption>
                 <thead>
                   <tr>

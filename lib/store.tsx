@@ -47,7 +47,8 @@ const DEFAULT_PREFS: Prefs = { purpose: "focus", priorities: ["quiet", "outlet"]
 interface ToastItem {
   id: number;
   message: string;
-  action?: { label: string; href: string };
+  /** 이동(href) 또는 즉시 실행(onClick, 예: 되돌리기) */
+  action?: { label: string; href?: string; onClick?: () => void };
 }
 
 export type CreatePlanResult = { ok: true; plan: Plan } | { ok: false; error: string };
@@ -234,7 +235,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const showToast = useCallback(
     (message: string, action?: ToastItem["action"]) => {
       const id = ++toastId.current;
-      setToasts((prev) => [...prev.slice(-1), { id, message, action }]);
+      setToasts([{ id, message, action }]);
       window.setTimeout(() => dismissToast(id), 3200);
     },
     [dismissToast]

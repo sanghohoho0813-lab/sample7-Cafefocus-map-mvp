@@ -22,7 +22,7 @@ export default function PlanView() {
   const search = useSearchParams();
   const router = useRouter();
   const now = useNow();
-  const { plans, reviews, hydrated, cancelPlan, showToast } = useApp();
+  const { plans, reviews, hydrated, cancelPlan } = useApp();
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   if (!hydrated) {
@@ -72,7 +72,6 @@ export default function PlanView() {
   const doCancel = () => {
     cancelPlan(plan.id);
     setConfirmOpen(false);
-    showToast("작업 계획을 취소했어요");
   };
 
   return (

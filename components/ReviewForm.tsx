@@ -138,7 +138,8 @@ export default function ReviewForm({ cafe }: { cafe: Cafe }) {
         wifi,
         text,
       });
-      showToast(plan ? "작업을 기록했어요" : "후기를 남겼어요");
+      // 계획 기록은 완료 화면이 결과를 보여주므로 알림은 단독 후기에만
+      if (!plan) showToast("후기를 남겼어요");
       router.replace(plan ? `/plans/${plan.id}` : `/cafe/${cafe.id}`);
     }, 400);
   };
@@ -146,13 +147,16 @@ export default function ReviewForm({ cafe }: { cafe: Cafe }) {
   return (
     <form onSubmit={submit} className="flex h-full flex-col bg-cream-50" noValidate>
       <div className="flex h-14 shrink-0 items-center gap-2 border-b border-cream-300/70 bg-white px-2 lg:px-6">
-        <Link
-          href={plan ? `/plans/${plan.id}` : `/cafe/${cafe.id}`}
+        <button
+          type="button"
+          onClick={() =>
+            window.history.length > 1 ? router.back() : router.push(plan ? `/plans/${plan.id}` : `/cafe/${cafe.id}`)
+          }
           className="flex h-10 w-10 items-center justify-center rounded-full text-coffee-700 hover:bg-cream-100"
-          aria-label="돌아가기"
+          aria-label="뒤로 가기"
         >
           <ArrowLeft size={20} />
-        </Link>
+        </button>
         <h1 className="text-title text-coffee-900">{plan ? "작업 기록하기" : "작업 후기 남기기"}</h1>
       </div>
 
@@ -302,14 +306,15 @@ export default function ReviewForm({ cafe }: { cafe: Cafe }) {
         </div>
       </div>
 
-      <div className="shrink-0 border-t border-cream-300/70 bg-white px-4 pb-[max(12px,env(safe-area-inset-bottom))] pt-3">
-        <div className="mx-auto max-w-xl">
+      <div data-bottom-bar className="sticky bottom-0 z-30 shrink-0 border-t border-cream-300/70 bg-white px-4 pb-[max(12px,env(safe-area-inset-bottom))] pt-3">
+        {/* 넓은 화면에선 안내와 버튼을 한 줄로 — 바가 낮아야 공용 뒤로·앞으로 버튼이 그 위에 자리를 잡는다 */}
+        <div className="mx-auto max-w-xl sm:flex sm:items-center sm:gap-4">
           {!valid && (
-            <p className="mb-2 text-center text-meta text-coffee-500">
+            <p className="mb-2 text-center text-meta text-coffee-500 sm:mb-0 sm:flex-1 sm:text-left">
               남은 항목 <b className="font-semibold text-coffee-800">{missing.join(" · ")}</b>
             </p>
           )}
-          <button type="submit" disabled={!valid || submitting} className="btn-primary w-full">
+          <button type="submit" disabled={!valid || submitting} className="btn-primary w-full sm:ml-auto sm:w-auto sm:min-w-[240px]">
             {submitting && <Loader2 size={18} className="animate-spin" />}
             {submitting ? "저장하는 중…" : plan ? "기록 저장하고 작업 완료" : "후기 저장"}
           </button>

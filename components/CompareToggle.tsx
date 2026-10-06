@@ -8,10 +8,13 @@ import { getCafe } from "@/lib/data/cafes";
 export default function CompareToggle({
   cafeId,
   compact = false,
+  quiet = false,
   className = "",
 }: {
   cafeId: string;
   compact?: boolean;
+  /** 결과가 화면에 바로 보이는 곳(저장 목록의 비교 바)에서는 알림을 띄우지 않는다 */
+  quiet?: boolean;
   className?: string;
 }) {
   const { inCompare, toggleCompare, showToast, hydrated, compare } = useApp();
@@ -23,6 +26,7 @@ export default function CompareToggle({
     const name = getCafe(cafeId)?.name ?? "카페";
     const wasFull = !active && compare.length >= 3;
     const added = toggleCompare(cafeId);
+    if (quiet && !wasFull) return;
     if (added) {
       showToast(`비교함에 담았어요 · ${name}`, { label: "비교하기", href: "/compare" });
     } else if (!wasFull) {
