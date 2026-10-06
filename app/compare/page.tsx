@@ -13,7 +13,6 @@ import {
   hourlyAt,
   isOpenAt,
   levelOf,
-  CROWD_LABEL,
   metricLabel,
   noiseLabel,
   outletLabel,
@@ -25,6 +24,8 @@ import CafePhoto from "@/components/CafePhoto";
 import EmptyState from "@/components/EmptyState";
 import Sheet from "@/components/Sheet";
 import ScorePill from "@/components/ScorePill";
+
+const CROWD_SHORT = { quiet: "한산", normal: "보통", busy: "혼잡" } as const;
 
 interface RowDef {
   label: string;
@@ -44,7 +45,7 @@ export default function ComparePage() {
     { label: "적합도", value: (c, h) => String(fitScore(c, purpose, h)), rank: (c, h) => fitScore(c, purpose, h) },
     {
       label: `${hour}시 혼잡도`,
-      value: (c, h) => (isOpenAt(c, h) ? CROWD_LABEL[levelOf(hourlyAt(c, h).crowd)].replace("요", "") : "영업 외"),
+      value: (c, h) => (isOpenAt(c, h) ? CROWD_SHORT[levelOf(hourlyAt(c, h).crowd)] : "영업 외"),
       rank: (c, h) => (isOpenAt(c, h) ? -hourlyAt(c, h).crowd : -999),
     },
     { label: "소음", value: (c) => noiseLabel(c.metrics.noiseScore), rank: (c) => c.metrics.noiseScore },
@@ -117,9 +118,16 @@ export default function ComparePage() {
             </p>
           </div>
           {cafes.length > 0 && (
-            <button type="button" onClick={clearCompare} className="btn-quiet text-label">
-              비우기
-            </button>
+            <div className="flex items-center gap-1">
+              {cafes.length < 3 && (
+                <button type="button" onClick={() => setPickerOpen(true)} className="btn-quiet text-label sm:hidden">
+                  <Plus size={16} /> 추가
+                </button>
+              )}
+              <button type="button" onClick={clearCompare} className="btn-quiet text-label">
+                비우기
+              </button>
+            </div>
           )}
         </header>
 
@@ -130,7 +138,7 @@ export default function ComparePage() {
               title="비교할 카페를 2~3곳 담아보세요"
               description="저장한 카페나 상세 화면에서 '비교 담기'를 누르면 여기서 나란히 볼 수 있어요."
               action={
-                <div className="flex gap-2">
+                <div className="flex flex-wrap justify-center gap-2">
                   <Link href="/favorites" className="btn-primary h-11">
                     저장한 카페에서 고르기
                   </Link>
@@ -172,15 +180,16 @@ export default function ComparePage() {
 
             {/* ---------- 근거 표 ---------- */}
             <div className="mt-6 overflow-x-auto rounded-2xl border border-cream-300/80 bg-white">
-              <table className="w-full min-w-[560px] border-collapse text-left">
+              {/* 2곳은 모바일 폭에 맞추고, 3곳일 때만 가로 스크롤 */}
+              <table className={`w-full border-collapse text-left ${cafes.length >= 3 ? "min-w-[600px]" : "sm:min-w-[560px]"}`}>
                 <caption className="sr-only">카페별 작업 환경 비교</caption>
                 <thead>
                   <tr>
-                    <th scope="col" className="sticky left-0 z-10 w-28 bg-white p-4 align-bottom text-meta font-medium text-coffee-400">
+                    <th scope="col" className="sticky left-0 z-10 w-[84px] bg-white p-3 align-bottom text-meta font-medium text-coffee-400 sm:w-28 sm:p-4">
                       항목
                     </th>
                     {cafes.map((c) => (
-                      <th key={c.id} scope="col" className="p-4 align-top">
+                      <th key={c.id} scope="col" className="p-3 align-top sm:p-4">
                         <div className="relative">
                           <CafePhoto cafe={c} className="aspect-[4/3] w-full rounded-xl" sizes="220px" overlay={false} />
                           <button
@@ -192,14 +201,14 @@ export default function ComparePage() {
                             <X size={15} />
                           </button>
                         </div>
-                        <Link href={`/cafe/${c.id}`} className="mt-2.5 block truncate text-title text-coffee-900 hover:underline">
+                        <Link href={`/cafe/${c.id}`} className="mt-2.5 block break-keep text-title text-coffee-900 hover:underline">
                           {c.name}
                         </Link>
                         <span className="text-meta font-normal text-coffee-400">{AREA_MAP[c.area].name}</span>
                       </th>
                     ))}
                     {cafes.length < 3 && (
-                      <th scope="col" className="p-4 align-top">
+                      <th scope="col" className="hidden p-4 align-top sm:table-cell">
                         <button
                           type="button"
                           onClick={() => setPickerOpen(true)}
@@ -217,13 +226,13 @@ export default function ComparePage() {
                     const best = bestIndex(row);
                     return (
                       <tr key={row.label} className="border-t border-cream-200">
-                        <th scope="row" className="sticky left-0 z-10 bg-white px-4 py-3 text-meta font-medium text-coffee-500">
+                        <th scope="row" className="sticky left-0 z-10 bg-white px-3 py-3 text-meta font-medium text-coffee-500 sm:px-4">
                           {row.label}
                         </th>
                         {cafes.map((c, i) => (
                           <td
                             key={c.id}
-                            className={`num px-4 py-3 text-body ${i === best ? "font-bold text-coffee-900" : "text-coffee-700"}`}
+                            className={`px-3 py-3 text-body tabular-nums sm:px-4 ${i === best ? "font-bold text-coffee-900" : "text-coffee-700"}`}
                           >
                             <span className="inline-flex items-center gap-1.5">
                               {row.label === "적합도" ? <ScorePill score={fitScore(c, purpose, hour)} muted={!isOpenAt(c, hour)} /> : row.value(c, hour)}
@@ -233,7 +242,7 @@ export default function ComparePage() {
                             </span>
                           </td>
                         ))}
-                        {cafes.length < 3 && <td />}
+                        {cafes.length < 3 && <td className="hidden sm:table-cell" />}
                       </tr>
                     );
                   })}

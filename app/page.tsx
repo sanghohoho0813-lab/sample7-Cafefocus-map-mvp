@@ -160,6 +160,8 @@ export default function HomePage() {
             hoveredId={hoveredId}
             onSelect={selectCafe}
             area={area}
+            purposeLabel={purposeLabel}
+            onLegendClick={() => setAboutOpen(true)}
           >
             {selected && (
               <div className="absolute bottom-4 left-4 z-30 hidden lg:block">

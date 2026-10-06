@@ -137,10 +137,20 @@ export function fitCaution(cafe: Cafe, hour: number): string | null {
 }
 
 /** 가장 한산한 시간 (영업 시간 안에서) */
-export function calmestHour(cafe: Cafe): number {
-  let best = cafe.hourly.find((p) => isOpenAt(cafe, p.hour)) ?? cafe.hourly[0];
-  for (const p of cafe.hourly) {
-    if (isOpenAt(cafe, p.hour) && p.crowd < best.crowd) best = p;
-  }
-  return best.hour;
+/**
+ * 가장 한산한 시간.
+ * 문 닫기 직전은 쓸모가 없으니 최소 2시간 머물 수 있는 시간만 보고,
+ * fromHour가 있으면 그 이후(오늘 남은 시간) 중에서 고른다. 같으면 이른 시간.
+ */
+export function calmestHour(cafe: Cafe, fromHour?: number): number {
+  const lastStart = cafe.close - 2;
+  const pick = (from: number) => {
+    let best: { hour: number; crowd: number } | null = null;
+    for (const p of cafe.hourly) {
+      if (p.hour < from || p.hour > lastStart || !isOpenAt(cafe, p.hour)) continue;
+      if (!best || p.crowd < best.crowd) best = p;
+    }
+    return best;
+  };
+  return (pick(fromHour ?? 0) ?? pick(0) ?? cafe.hourly.find((p) => isOpenAt(cafe, p.hour)) ?? cafe.hourly[0]).hour;
 }

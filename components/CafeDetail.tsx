@@ -22,8 +22,9 @@ import {
   AlertCircle,
   CalendarCheck2,
   PenLine,
+  ChevronDown,
 } from "lucide-react";
-import type { Cafe, Plan } from "@/lib/types";
+import type { Cafe, Plan, Purpose } from "@/lib/types";
 import { AREA_MAP, CAFES } from "@/lib/data/cafes";
 import {
   distanceKm,
@@ -35,7 +36,7 @@ import {
   noiseLabel,
   outletLabel,
 } from "@/lib/scoring";
-import { calmestHour, fitCaution, fitReasons, fitScore, PURPOSE_LABEL, rankByFit, verdict } from "@/lib/fit";
+import { calmestHour, fitCaution, fitReasons, fitScore, PURPOSES, rankByFit, verdict } from "@/lib/fit";
 import { dateKey, hm, relativeDate } from "@/lib/time";
 import { reviewsForCafe } from "@/lib/reviews";
 import { useApp } from "@/lib/store";
@@ -48,10 +49,14 @@ import CafeCard from "@/components/CafeCard";
 import ScorePill from "@/components/ScorePill";
 
 /** 결론 → 이유 → 주의 (모바일 본문 · 데스크톱 스티키 패널 공용) */
-function Decision({ cafe, hour, purposeLabel, score, reasons, caution, ready }: {
+function Decision({ cafe, hour, purpose, onPurpose, picked, onResetHour, score, reasons, caution, ready }: {
   cafe: Cafe;
   hour: number;
-  purposeLabel: string;
+  purpose: Purpose;
+  onPurpose: (p: Purpose) => void;
+  /** 그래프에서 다른 시간을 골랐는지 */
+  picked: boolean;
+  onResetHour: () => void;
   score: number;
   reasons: string[];
   caution: string | null;
@@ -72,9 +77,32 @@ function Decision({ cafe, hour, purposeLabel, score, reasons, caution, ready }: 
   }
   return (
     <div>
-      <p className="text-caption font-semibold text-coffee-400">
-        <span className="num">{hour}시</span> · {purposeLabel} 기준
-      </p>
+      {/* 기준을 이 자리에서 바로 바꿀 수 있게 — 목적 선택, 고른 시간 되돌리기 */}
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-meta text-coffee-500">
+        <span className="num font-semibold text-coffee-700">{hour}시</span>
+        <span aria-hidden>·</span>
+        <label className="relative inline-flex items-center">
+          <span className="sr-only">작업 목적</span>
+          <select
+            value={purpose}
+            onChange={(e) => onPurpose(e.target.value as Purpose)}
+            className="h-7 cursor-pointer appearance-none rounded-lg border border-cream-300 bg-white pl-2.5 pr-7 font-semibold text-coffee-800 outline-none transition-colors hover:border-coffee-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-coffee-600"
+          >
+            {PURPOSES.map((p) => (
+              <option key={p.key} value={p.key}>
+                {p.label}
+              </option>
+            ))}
+          </select>
+          <ChevronDown size={14} className="pointer-events-none absolute right-2 text-coffee-400" aria-hidden />
+        </label>
+        <span>기준</span>
+        {picked && (
+          <button type="button" onClick={onResetHour} className="ml-auto font-semibold text-coffee-700 underline underline-offset-4">
+            지금 기준으로
+          </button>
+        )}
+      </div>
       <div className="mt-2 flex items-center gap-4">
         <ScorePill score={score} muted={!open} size="lg" />
         <p className="text-title text-coffee-900">{verdict(cafe, hour)}</p>
@@ -113,8 +141,8 @@ function Section({ title, action, children }: { title: string; action?: React.Re
 
 export default function CafeDetail({ cafe }: { cafe: Cafe }) {
   const router = useRouter();
-  const { addRecent, plans, reviews, hydrated } = useApp();
-  const { purpose, hour: contextHour, now } = useFitContext();
+  const { addRecent, plans, reviews, hydrated, setPurpose } = useApp();
+  const { purpose, hour: contextHour, now, isLive } = useFitContext();
   const [pickedHour, setPickedHour] = useState<number | null>(null);
   const [metric, setMetric] = useState<"crowd" | "noise">("crowd");
 
@@ -127,9 +155,9 @@ export default function CafeDetail({ cafe }: { cafe: Cafe }) {
   const score = fitScore(cafe, purpose, hour);
   const reasons = fitReasons(cafe, purpose, hour, 3);
   const caution = fitCaution(cafe, hour);
-  const purposeLabel = PURPOSE_LABEL[purpose];
   const area = AREA_MAP[cafe.area];
-  const calm = calmestHour(cafe);
+  // 지금 시각을 따라가는 중이면 "오늘 남은 시간 중"에서 고른다
+  const calm = calmestHour(cafe, isLive ? contextHour : undefined);
 
   /** 이 카페에 예정된 가장 가까운 작업 */
   const myPlan: Plan | null = useMemo(() => {
@@ -171,6 +199,21 @@ export default function CafeDetail({ cafe }: { cafe: Cafe }) {
     { icon: Car, label: "주차", value: cafe.amenities.parking ? "가능" : "불가" },
   ];
 
+  const decision = (
+    <Decision
+      cafe={cafe}
+      hour={hour}
+      purpose={purpose}
+      onPurpose={setPurpose}
+      picked={pickedHour !== null && pickedHour !== contextHour}
+      onResetHour={() => setPickedHour(null)}
+      score={score}
+      reasons={reasons}
+      caution={caution}
+      ready={now !== null && hydrated}
+    />
+  );
+
   const planBanner = myPlan && (
     <Link
       href={`/plans/${myPlan.id}`}
@@ -198,7 +241,7 @@ export default function CafeDetail({ cafe }: { cafe: Cafe }) {
             cafe={cafe}
             variant="wide"
             priority
-            className="aspect-[16/9] w-full lg:aspect-[2.4/1] lg:rounded-3xl"
+            className="aspect-[16/9] w-full lg:aspect-[3.2/1] lg:rounded-3xl"
             sizes="(max-width: 1024px) 100vw, 1100px"
           />
           <button
@@ -236,7 +279,7 @@ export default function CafeDetail({ cafe }: { cafe: Cafe }) {
 
             {/* 모바일: 결론을 본문 첫머리에 */}
             <div className="border-t border-cream-300/70 py-6 lg:hidden">
-              <Decision cafe={cafe} hour={hour} purposeLabel={purposeLabel} score={score} reasons={reasons} caution={caution} ready={now !== null && hydrated} />
+              {decision}
             </div>
 
             <Section
@@ -262,7 +305,7 @@ export default function CafeDetail({ cafe }: { cafe: Cafe }) {
             >
               <HourlyChart cafe={cafe} metric={metric} selectedHour={hour} onSelect={setPickedHour} />
               <p className="mt-4 text-meta text-coffee-500">
-                막대를 누르면 그 시간 기준으로 다시 판단해요. 가장 한산한 시간은{" "}
+                막대를 누르면 그 시간 기준으로 다시 판단해요. {isLive ? "오늘 남은 시간 중 " : ""}가장 한산한 때는{" "}
                 <button
                   type="button"
                   onClick={() => setPickedHour(calm)}
@@ -307,7 +350,7 @@ export default function CafeDetail({ cafe }: { cafe: Cafe }) {
             </Section>
 
             <Section
-              title={`작업 후기 ${cafe.reviewCount + myReviewCount}`}
+              title="작업 후기"
               action={
                 <Link href={`/cafe/${cafe.id}/review`} className="btn-quiet h-10 text-label">
                   <PenLine size={16} />
@@ -315,6 +358,16 @@ export default function CafeDetail({ cafe }: { cafe: Cafe }) {
                 </Link>
               }
             >
+              <div className="mb-5 flex items-center gap-4 rounded-2xl bg-white px-5 py-4">
+                <div className="flex items-center gap-1.5">
+                  <Star size={22} className="fill-amber2-400 text-amber2-400" aria-hidden />
+                  <span className="num text-section text-coffee-900">{cafe.rating.toFixed(1)}</span>
+                </div>
+                <p className="min-w-0 text-meta text-coffee-500">
+                  후기 <b className="num font-semibold text-coffee-800">{(cafe.reviewCount + myReviewCount).toLocaleString()}개</b>
+                  <span className="block truncate">방문자 키워드 · {cafe.tags.slice(0, 3).join(" · ")}</span>
+                </p>
+              </div>
               <ul className="divide-y divide-cream-300/70">
                 {allReviews.map((r) => (
                   <li key={r.id} className="py-4 first:pt-0">
@@ -354,7 +407,7 @@ export default function CafeDetail({ cafe }: { cafe: Cafe }) {
             <div className="sticky top-6 mt-7 space-y-4">
               {planBanner}
               <div className="rounded-2xl border border-cream-300/80 bg-white p-6 shadow-card">
-                <Decision cafe={cafe} hour={hour} purposeLabel={purposeLabel} score={score} reasons={reasons} caution={caution} ready={now !== null && hydrated} />
+                {decision}
                 <Link href={planHref} className="btn-primary mt-6 w-full">
                   {ctaLabel}
                   <ArrowRight size={17} />
@@ -364,9 +417,7 @@ export default function CafeDetail({ cafe }: { cafe: Cafe }) {
                   <FavoriteButton cafeId={cafe.id} />
                 </div>
               </div>
-              <p className="px-1 text-caption text-coffee-400">
-                혼잡·소음은 데모 데이터 기반 예측값이에요. 목적은 지도 상단에서 바꿀 수 있어요.
-              </p>
+              <p className="px-1 text-caption text-coffee-400">혼잡·소음은 데모 데이터 기반 예측값이에요.</p>
             </div>
           </aside>
         </div>

@@ -79,6 +79,8 @@ export default function CafeCard({
         <Link href={`/cafe/${cafe.id}`} className="block focus-visible:outline-none">
           <div className="relative">
             <CafePhoto cafe={cafe} className="aspect-[4/3] w-full" sizes="(max-width: 640px) 100vw, (max-width: 1280px) 50vw, 400px" />
+            {/* 보조 행동이 없으면 하단 줄 없이 사진 위에 저장 버튼만 */}
+            {!footer && <FavoriteButton cafeId={cafe.id} onImage className="absolute right-3 top-3" />}
           </div>
           <div className="space-y-1.5 px-4 pb-3 pt-3.5">
             <div className="flex items-start justify-between gap-3">
@@ -92,10 +94,12 @@ export default function CafeCard({
             {planLine}
           </div>
         </Link>
-        <div className="mt-auto flex items-center justify-between gap-2 border-t border-cream-200 px-4 py-2.5">
-          {footer ?? <span />}
-          <FavoriteButton cafeId={cafe.id} />
-        </div>
+        {footer && (
+          <div className="mt-auto flex items-center justify-between gap-2 border-t border-cream-200 px-4 py-2.5">
+            {footer}
+            <FavoriteButton cafeId={cafe.id} />
+          </div>
+        )}
       </article>
     );
   }
@@ -111,12 +115,13 @@ export default function CafeCard({
     >
       <Link
         href={`/cafe/${cafe.id}`}
-        className="flex gap-3.5 rounded-2xl p-3 pr-14 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-coffee-600"
+        className="flex gap-3.5 rounded-2xl p-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-coffee-600"
       >
         <CafePhoto cafe={cafe} className="h-[84px] w-[84px] shrink-0 rounded-xl" sizes="84px" overlay={false} />
+        {/* 하트 버튼 자리는 위 두 줄만 비워 두고, 이유 줄은 카드 끝까지 쓴다 */}
         <div className="min-w-0 flex-1 space-y-1">
-          <h3 className="truncate text-title text-coffee-900">{cafe.name}</h3>
-          <p className="truncate text-meta text-coffee-400">
+          <h3 className="truncate pr-10 text-title text-coffee-900">{cafe.name}</h3>
+          <p className="truncate pr-10 text-meta text-coffee-400">
             {where} · <span className="num">{openText(cafe, hour)}</span>
           </p>
           <div className="flex min-w-0 items-center gap-2 text-meta">
@@ -127,7 +132,7 @@ export default function CafeCard({
           {planLine}
         </div>
       </Link>
-      <FavoriteButton cafeId={cafe.id} className="absolute right-3 top-3" />
+      <FavoriteButton cafeId={cafe.id} className="absolute right-2.5 top-2.5" />
     </article>
   );
 }

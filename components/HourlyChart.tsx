@@ -10,6 +10,11 @@ const BAR: Record<LevelKey, string> = {
   busy: "bg-coffee-500",
 };
 
+/** "한산해요" → "한산", "시끄러워요" → "시끄러움" */
+function shortLabel(label: string) {
+  return label.replace("해요", "").replace("이에요", "").replace("워요", "움");
+}
+
 /**
  * 시간대별 혼잡/소음 막대 그래프.
  * 막대를 누르면 그 시간을 기준으로 위쪽 결론이 다시 계산된다.
@@ -19,7 +24,7 @@ export default function HourlyChart({
   metric,
   selectedHour,
   onSelect,
-  height = 96,
+  height = 120,
 }: {
   cafe: Cafe;
   metric: "noise" | "crowd";
@@ -31,7 +36,7 @@ export default function HourlyChart({
 
   return (
     <div>
-      <div className="flex items-end gap-1" style={{ height }} role="group" aria-label={`시간대별 ${metric === "noise" ? "소음" : "혼잡도"}`}>
+      <div className="flex items-end gap-1 pt-7" style={{ height: height + 28 }} role="group" aria-label={`시간대별 ${metric === "noise" ? "소음" : "혼잡도"}`}>
         {cafe.hourly.map((p) => {
           const v = p[metric];
           const lv = levelOf(v);
@@ -47,11 +52,18 @@ export default function HourlyChart({
               aria-pressed={sel}
             >
               <span
-                className={`block w-full rounded-t-[4px] transition-colors duration-200 ${
+                className={`relative block w-full rounded-t-[4px] transition-colors duration-200 ${
                   sel ? "bg-coffee-900" : open ? `${BAR[lv]} group-hover:bg-coffee-400` : "bg-cream-300"
                 }`}
                 style={{ height: `${Math.max(v, 8)}%` }}
-              />
+              >
+                {/* 고른 시간의 상태를 막대 위에 바로 표시 */}
+                {sel && (
+                  <span className="absolute bottom-full left-1/2 mb-1.5 -translate-x-1/2 whitespace-nowrap rounded-md bg-coffee-900 px-1.5 py-0.5 text-[12px] font-semibold text-cream-50">
+                    {open ? shortLabel(labelMap[lv]) : "영업 외"}
+                  </span>
+                )}
+              </span>
             </button>
           );
         })}
@@ -73,7 +85,7 @@ export default function HourlyChart({
         {(["quiet", "normal", "busy"] as LevelKey[]).map((lv) => (
           <span key={lv} className="flex items-center gap-1.5">
             <span className={`h-2.5 w-2.5 rounded-sm ${BAR[lv]}`} />
-            {labelMap[lv].replace("해요", "").replace("이에요", "").replace("워요", "움")}
+            {shortLabel(labelMap[lv])}
           </span>
         ))}
         <span className="flex items-center gap-1.5">

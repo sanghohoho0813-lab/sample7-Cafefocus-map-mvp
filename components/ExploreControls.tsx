@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronDown, Clock3, Laptop, MapPin, SlidersHorizontal, Check, RotateCcw } from "lucide-react";
 import type { AreaKey, FilterKey, Purpose } from "@/lib/types";
 import { AREAS } from "@/lib/data/cafes";
@@ -61,6 +61,25 @@ export default function ExploreControls({
 
   const moreCount = filters.filter((f) => MORE_FILTERS.includes(f)).length;
 
+  // 가로로 넘치는 조건 줄: 더 있는 쪽에만 흐림 처리해 "옆으로 넘길 수 있음"을 알려준다
+  const rowRef = useRef<HTMLDivElement>(null);
+  const [edge, setEdge] = useState({ left: false, right: false });
+  const measureEdge = useCallback(() => {
+    const el = rowRef.current;
+    if (!el) return;
+    const left = el.scrollLeft > 4;
+    const right = el.scrollLeft + el.clientWidth < el.scrollWidth - 4;
+    setEdge((prev) => (prev.left === left && prev.right === right ? prev : { left, right }));
+  }, []);
+  useEffect(() => {
+    measureEdge();
+    const el = rowRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(measureEdge);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [measureEdge, filters.length, moreCount]);
+
   const changeArea = (a: AreaKey | null) => {
     setArea(a);
     onAreaChange();
@@ -84,7 +103,14 @@ export default function ExploreControls({
         </button>
       </div>
 
-      <div className="no-scrollbar -mx-4 flex items-center gap-2 overflow-x-auto px-4 lg:mx-0 lg:px-0" role="group" aria-label="탐색 조건">
+      <div className="relative -mx-4 lg:mx-0">
+      <div
+        ref={rowRef}
+        onScroll={measureEdge}
+        className="no-scrollbar flex items-center gap-2 overflow-x-auto px-4 lg:px-0"
+        role="group"
+        aria-label="탐색 조건"
+      >
         <SelectPill
           icon={MapPin}
           label="지역"
@@ -143,6 +169,15 @@ export default function ExploreControls({
             +{moreCount}개 조건
           </button>
         )}
+      </div>
+        <span
+          className={`pointer-events-none absolute inset-y-0 left-0 w-8 bg-gradient-to-r from-cream-50 to-transparent transition-opacity ${edge.left ? "opacity-100" : "opacity-0"}`}
+          aria-hidden
+        />
+        <span
+          className={`pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-cream-50 to-transparent transition-opacity ${edge.right ? "opacity-100" : "opacity-0"}`}
+          aria-hidden
+        />
       </div>
 
       <Sheet

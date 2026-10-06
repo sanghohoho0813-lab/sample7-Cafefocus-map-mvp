@@ -23,6 +23,8 @@ import type {
 import { CAFE_MAP } from "@/lib/data/cafes";
 import { buildSeed } from "@/lib/data/seed";
 import { validatePlan } from "@/lib/plans";
+import { PURPOSE_LABEL } from "@/lib/fit";
+import { PRIORITIES, STAY_OPTIONS } from "@/lib/recommendation";
 
 /*
  * 데모 모드 상태 저장소.
@@ -114,38 +116,53 @@ function write(key: string, value: unknown) {
 const isStringArray = (v: unknown): v is string[] =>
   Array.isArray(v) && v.every((x) => typeof x === "string");
 
-const isPlanArray = (v: unknown): v is Plan[] =>
-  Array.isArray(v) &&
-  v.every(
-    (p) =>
-      p &&
-      typeof p === "object" &&
-      typeof (p as Plan).id === "string" &&
-      typeof (p as Plan).cafeId === "string" &&
-      typeof (p as Plan).date === "string" &&
-      typeof (p as Plan).startHour === "number" &&
-      typeof (p as Plan).durationMin === "number" &&
-      Boolean(CAFE_MAP[(p as Plan).cafeId])
-  );
+const PURPOSE_KEYS = new Set<string>(Object.keys(PURPOSE_LABEL));
+const PRIORITY_KEYS = new Set<string>(PRIORITIES.map((p) => p.key));
+const STAY_KEYS = new Set<string>(STAY_OPTIONS.map((o) => o.key));
+const STATUS_KEYS = new Set<string>(["planned", "completed", "cancelled"]);
 
-const isReviewArray = (v: unknown): v is UserReview[] =>
-  Array.isArray(v) &&
-  v.every(
-    (r) =>
-      r &&
-      typeof r === "object" &&
-      typeof (r as UserReview).id === "string" &&
-      typeof (r as UserReview).cafeId === "string" &&
-      typeof (r as UserReview).rating === "number" &&
-      Boolean(CAFE_MAP[(r as UserReview).cafeId])
-  );
+const isObj = (v: unknown): v is Record<string, unknown> => Boolean(v) && typeof v === "object";
+
+const isPlan = (p: unknown): p is Plan =>
+  isObj(p) &&
+  typeof p.id === "string" &&
+  typeof p.cafeId === "string" &&
+  Boolean(CAFE_MAP[p.cafeId]) &&
+  typeof p.date === "string" &&
+  /^\d{4}-\d{2}-\d{2}$/.test(p.date) &&
+  typeof p.startHour === "number" &&
+  p.startHour >= 0 &&
+  p.startHour <= 23 &&
+  typeof p.durationMin === "number" &&
+  p.durationMin > 0 &&
+  typeof p.purpose === "string" &&
+  PURPOSE_KEYS.has(p.purpose) &&
+  typeof p.status === "string" &&
+  STATUS_KEYS.has(p.status);
+
+const isReview = (r: unknown): r is UserReview =>
+  isObj(r) &&
+  typeof r.id === "string" &&
+  typeof r.cafeId === "string" &&
+  Boolean(CAFE_MAP[r.cafeId]) &&
+  typeof r.rating === "number" &&
+  r.rating >= 1 &&
+  r.rating <= 5 &&
+  typeof r.purpose === "string" &&
+  PURPOSE_KEYS.has(r.purpose);
+
+/** 배열 안의 손상된 항목만 버린다 (하나가 깨졌다고 전체 기록을 잃지 않게) */
+const isArray = (v: unknown): v is unknown[] => Array.isArray(v);
+const keepValid = <T,>(list: unknown[], item: (v: unknown) => v is T): T[] => list.filter(item);
 
 const isPrefs = (v: unknown): v is Prefs =>
-  Boolean(v) &&
-  typeof v === "object" &&
-  typeof (v as Prefs).purpose === "string" &&
-  Array.isArray((v as Prefs).priorities) &&
-  typeof (v as Prefs).stay === "string";
+  isObj(v) &&
+  typeof v.purpose === "string" &&
+  PURPOSE_KEYS.has(v.purpose) &&
+  Array.isArray(v.priorities) &&
+  v.priorities.every((k) => typeof k === "string" && PRIORITY_KEYS.has(k)) &&
+  typeof v.stay === "string" &&
+  STAY_KEYS.has(v.stay);
 
 const uid = (prefix: string) =>
   `${prefix}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
@@ -201,10 +218,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       commitReviews(seed.reviews);
       write(KEY.seeded, true);
     } else {
-      const p = read(KEY.plans, isPlanArray, []);
+      const p = keepValid(read(KEY.plans, isArray, []), isPlan);
       plansRef.current = p;
       setPlans(p);
-      setReviews(read(KEY.reviews, isReviewArray, []));
+      setReviews(keepValid(read(KEY.reviews, isArray, []), isReview));
     }
     setHydrated(true);
   }, [commitPlans, commitReviews]);

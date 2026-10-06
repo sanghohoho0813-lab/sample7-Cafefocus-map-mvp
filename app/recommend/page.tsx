@@ -237,10 +237,10 @@ export default function RecommendPage() {
                     </p>
                   )}
                   <div className="mt-6 flex flex-col gap-2.5 sm:flex-row">
-                    <Link href={`/cafe/${top.cafe.id}/plan?hour=${hour}`} className="btn-primary flex-1">
+                    <Link href={`/cafe/${top.cafe.id}/plan?hour=${hour}`} className="btn-primary sm:flex-1">
                       {hour}시에 여기서 작업하기
                     </Link>
-                    <Link href={`/cafe/${top.cafe.id}`} className="btn-secondary flex-1">
+                    <Link href={`/cafe/${top.cafe.id}`} className="btn-secondary sm:flex-1">
                       자세히 보기
                     </Link>
                   </div>

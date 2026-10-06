@@ -87,7 +87,7 @@ export default function SearchBox({
             }
           }}
           placeholder={placeholder}
-          className="min-w-0 flex-1 bg-transparent text-body text-coffee-800 outline-none placeholder:text-coffee-300"
+          className="min-w-0 flex-1 bg-transparent text-body text-coffee-800 outline-none placeholder:text-coffee-400"
           role="combobox"
           aria-expanded={showList}
           aria-controls={listId}

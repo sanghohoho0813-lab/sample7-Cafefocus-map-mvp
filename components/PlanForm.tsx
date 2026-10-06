@@ -9,7 +9,7 @@ import { AREA_MAP, CAFE_MAP } from "@/lib/data/cafes";
 import { formatHours, hourlyAt, isOpenAt, levelOf } from "@/lib/scoring";
 import { fitScore, PURPOSES, PURPOSE_LABEL } from "@/lib/fit";
 import { DURATION_OPTIONS, findConflict, isPastSlot, maxDurationFor, startHoursFor } from "@/lib/plans";
-import { addDays, dateKey, formatDate, formatDuration, relativeDate, timeRange } from "@/lib/time";
+import { addDays, dateKey, dateWithRelative, formatDate, formatDuration, timeRange } from "@/lib/time";
 import { useApp } from "@/lib/store";
 import { useNow } from "@/lib/useNow";
 import CafePhoto from "@/components/CafePhoto";
@@ -266,7 +266,7 @@ export default function PlanForm({ cafe }: { cafe: Cafe }) {
               {input && summary && date ? (
                 <div className="mt-3 space-y-3">
                   <p className="num text-body font-semibold text-coffee-800">
-                    {relativeDate(date, now)} · {formatDate(date)}
+                    {dateWithRelative(date, now)}
                     <br />
                     {timeRange(input.startHour, input.durationMin)} · {PURPOSE_LABEL[input.purpose]}
                   </p>

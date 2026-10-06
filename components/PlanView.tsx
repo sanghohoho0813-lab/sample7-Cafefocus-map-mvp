@@ -7,7 +7,7 @@ import { ArrowLeft, CheckCircle2, CalendarX2, AlertCircle, Star, Clock3, Calenda
 import { CAFE_MAP } from "@/lib/data/cafes";
 import { hourlyAt, levelOf, CROWD_LABEL } from "@/lib/scoring";
 import { calmestHour, fitCaution, fitScore, PURPOSE_LABEL } from "@/lib/fit";
-import { formatDate, formatDuration, relativeDate, timeRange } from "@/lib/time";
+import { dateWithRelative, formatDate, formatDuration, timeRange } from "@/lib/time";
 import { reviewSummaryTags } from "@/lib/reviews";
 import { useApp } from "@/lib/store";
 import { useNow } from "@/lib/useNow";
@@ -106,7 +106,7 @@ export default function PlanView() {
                 {cafe.name}
               </Link>
               <p className="num mt-1 text-body font-semibold text-coffee-800">
-                {relativeDate(plan.date, now)} · {formatDate(plan.date)}
+                {dateWithRelative(plan.date, now)}
               </p>
               <p className="num text-meta text-coffee-500">
                 {timeRange(plan.startHour, plan.durationMin)} ({formatDuration(plan.durationMin)}) · {PURPOSE_LABEL[plan.purpose]}
@@ -154,30 +154,30 @@ export default function PlanView() {
         <div className="mt-6 flex flex-col gap-2.5 sm:flex-row">
           {isNew && (
             <>
-              <Link href="/my" className="btn-primary flex-1">
+              <Link href="/my" className="btn-primary sm:flex-1">
                 내 작업 일정 보기
               </Link>
-              <Link href="/" className="btn-secondary flex-1">
+              <Link href="/" className="btn-secondary sm:flex-1">
                 지도로 돌아가기
               </Link>
             </>
           )}
           {!isNew && plan.status === "planned" && (
             <>
-              <Link href={`/cafe/${cafe.id}/review?plan=${plan.id}`} className="btn-primary flex-1">
+              <Link href={`/cafe/${cafe.id}/review?plan=${plan.id}`} className="btn-primary sm:flex-1">
                 다녀왔어요 · 작업 기록하기
               </Link>
-              <Link href={`/cafe/${cafe.id}`} className="btn-secondary flex-1">
+              <Link href={`/cafe/${cafe.id}`} className="btn-secondary sm:flex-1">
                 카페 정보 보기
               </Link>
             </>
           )}
           {(plan.status === "completed" || plan.status === "cancelled") && (
             <>
-              <Link href={`/cafe/${cafe.id}/plan`} className="btn-primary flex-1">
+              <Link href={`/cafe/${cafe.id}/plan`} className="btn-primary sm:flex-1">
                 여기서 다시 작업하기
               </Link>
-              <Link href="/my" className="btn-secondary flex-1">
+              <Link href="/my" className="btn-secondary sm:flex-1">
                 내 작업으로
               </Link>
             </>

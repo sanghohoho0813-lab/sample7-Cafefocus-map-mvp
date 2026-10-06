@@ -24,9 +24,9 @@ export default function CompareToggle({
     const wasFull = !active && compare.length >= 3;
     const added = toggleCompare(cafeId);
     if (added) {
-      showToast(`${name}을(를) 비교함에 담았어요`, { label: "비교하기", href: "/compare" });
+      showToast(`비교함에 담았어요 · ${name}`, { label: "비교하기", href: "/compare" });
     } else if (!wasFull) {
-      showToast(`${name}을(를) 비교함에서 뺐어요`);
+      showToast(`비교함에서 뺐어요 · ${name}`);
     }
   };
 

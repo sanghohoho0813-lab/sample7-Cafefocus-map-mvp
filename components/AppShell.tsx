@@ -130,7 +130,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                     href={href}
                     aria-current={active ? "page" : undefined}
                     className={`relative flex h-16 flex-1 flex-col items-center justify-center gap-1 transition-colors duration-200 ${
-                      active ? "text-coffee-800" : "text-coffee-300"
+                      active ? "text-coffee-900" : "text-coffee-400"
                     }`}
                   >
                     <span className="relative">

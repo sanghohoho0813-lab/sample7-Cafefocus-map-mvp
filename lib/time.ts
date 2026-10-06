@@ -82,6 +82,13 @@ export function relativeDate(key: string, today: Date | null): string {
   return formatDate(key);
 }
 
+/** 상대 표기가 있으면 함께: "오늘 · 10월 6일 (화)", 없으면 "10월 4일 (일)" (같은 날짜를 두 번 쓰지 않는다) */
+export function dateWithRelative(key: string, today: Date | null): string {
+  const rel = relativeDate(key, today);
+  const full = formatDate(key);
+  return rel === full ? full : `${rel} · ${full}`;
+}
+
 /** 후기용 방문 시간대 라벨: "평일 오후" */
 export function visitLabel(key: string, hour: number): string {
   const day = fromDateKey(key).getDay();

@@ -30,7 +30,7 @@ export default function FavoriteButton({
         setPopping(true);
         window.setTimeout(() => setPopping(false), 350);
         showToast(
-          added ? `${name}을(를) 저장했어요` : `${name} 저장을 해제했어요`,
+          added ? `저장했어요 · ${name}` : `저장을 해제했어요 · ${name}`,
           added ? { label: "저장 목록", href: "/favorites" } : undefined
         );
       }}

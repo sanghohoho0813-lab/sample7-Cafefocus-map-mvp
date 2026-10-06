@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Coffee, Plus, Minus, LocateFixed, Navigation, CalendarCheck2 } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Plus, Minus, LocateFixed, Navigation, CalendarCheck2, Info } from "lucide-react";
 import type { AreaKey, Cafe } from "@/lib/types";
 import { AREA_MAP, DEMO_LOCATION } from "@/lib/data/cafes";
 import MapCanvas from "@/components/MapCanvas";
@@ -83,6 +83,7 @@ function separateMarkers(
   points: { x: number; y: number }[],
   minX: number,
   minY: number,
+  maxX = 85,
   iterations = 160
 ) {
   const pts = points.map((p) => ({ ...p }));
@@ -111,14 +112,25 @@ function separateMarkers(
   }
   // 상단 배너·줌 컨트롤·Bottom Sheet에 가리지 않는 영역으로 클램프
   return pts.map((p) => ({
-    x: Math.min(Math.max(p.x, 8), 85),
+    x: Math.min(Math.max(p.x, 8), maxX),
     y: Math.min(Math.max(p.y, 16), 64),
   }));
 }
 
-/** 마커가 실제로 차지하는 크기(핀 + 오른쪽 점수 배지 + 아래 꼬리), px */
-const MARKER_W = 56;
-const MARKER_H = 48;
+/** 마커(점수 알약 + 꼬리)가 실제로 차지하는 크기, px */
+const MARKER_W = 46;
+const MARKER_H = 34;
+
+/** 확대 단계 — 확대하면 마커 크기는 그대로, 간격만 벌어진다 (실제 지도처럼) */
+const ZOOMS = [1, 1.5, 2, 2.5];
+
+/** 기본 좌표(%)를 현재 확대·이동 상태의 화면 위치로 — 측정 전(SSR)에도 맞도록 CSS calc 사용 */
+function placeStyle(x: number, y: number, zoom: number, pan: { x: number; y: number }) {
+  return {
+    left: `calc(50% + ${((x - 50) * zoom).toFixed(3)}% + ${pan.x}px)`,
+    top: `calc(50% + ${((y - 50) * zoom).toFixed(3)}% + ${pan.y}px)`,
+  };
+}
 
 export default function MapView({
   cafes,
@@ -129,6 +141,8 @@ export default function MapView({
   hoveredId,
   onSelect,
   area,
+  purposeLabel,
+  onLegendClick,
   children,
 }: {
   cafes: Cafe[];
@@ -142,11 +156,21 @@ export default function MapView({
   hoveredId?: string | null;
   onSelect: (id: string | null) => void;
   area: AreaKey | null;
+  /** 범례에 쓰는 현재 목적 이름 */
+  purposeLabel: string;
+  /** 범례를 누르면 계산 기준을 보여준다 */
+  onLegendClick?: () => void;
   children?: React.ReactNode;
 }) {
-  const [zoom, setZoom] = useState(1);
+  const [zi, setZi] = useState(0);
+  const zoom = ZOOMS[zi];
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [dragging, setDragging] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 0, h: 0 });
+  const drag = useRef<{ id: number; sx: number; sy: number; px: number; py: number; moved: boolean } | null>(null);
+  const swallowClick = useRef(false);
+  const wheelAcc = useRef(0);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -158,51 +182,164 @@ export default function MapView({
     return () => ro.disconnect();
   }, []);
 
+  /** 지도 밖으로 너무 멀리 끌려가지 않게 이동 범위를 제한 */
+  const clampPan = useCallback(
+    (x: number, y: number, z: number) => {
+      const w = size.w || 720;
+      const h = size.h || 620;
+      const lx = ((z - 1) * w) / 2 + w * 0.15;
+      const ly = ((z - 1) * h) / 2 + h * 0.15;
+      return { x: Math.min(Math.max(x, -lx), lx), y: Math.min(Math.max(y, -ly), ly) };
+    },
+    [size.w, size.h]
+  );
+
+  /** 화면의 한 점(기본: 가운데)을 고정한 채 확대 단계를 바꾼다 */
+  const zoomTo = useCallback(
+    (nextIdx: number, anchor?: { x: number; y: number }) => {
+      const idx = Math.min(Math.max(nextIdx, 0), ZOOMS.length - 1);
+      if (idx === zi) return;
+      const z1 = ZOOMS[zi];
+      const z2 = ZOOMS[idx];
+      const ax = anchor?.x ?? 0; // 가운데 기준 오프셋(px)
+      const ay = anchor?.y ?? 0;
+      setPan((p) => (idx === 0 ? { x: 0, y: 0 } : clampPan(ax - (ax - p.x) * (z2 / z1), ay - (ay - p.y) * (z2 / z1), z2)));
+      setZi(idx);
+    },
+    [zi, clampPan]
+  );
+
+  const reset = () => {
+    setZi(0);
+    setPan({ x: 0, y: 0 });
+  };
+
+  const lastArea = useRef(area);
+
   const proj = useMemo(
     () => project(cafes.length ? cafes : [{ lat: DEMO_LOCATION.lat, lng: DEMO_LOCATION.lng } as Cafe]),
     [cafes]
   );
 
-  // 마커 실제 크기(핀 + 점수 배지)를 컨테이너 대비 %로 환산해 간격을 정한다.
-  // 폭이 좁은 모바일에서 같은 %가 훨씬 작은 픽셀이 되어 겹치는 문제를 막는다.
+  // 마커 실제 크기를 "확대된" 지도 대비 %로 환산해 간격을 정한다.
+  // 확대할수록 필요한 보정이 줄어 마커가 실제 위치에 가까워진다.
   const positions = useMemo(() => {
-    const w = size.w || 720;
-    const h = size.h || 620;
+    const w = (size.w || 720) * zoom;
+    const h = (size.h || 620) * zoom;
     const minX = Math.min((MARKER_W / w) * 100, 22);
     const minY = Math.min((MARKER_H / h) * 100, 16);
     // 순위(목적·시간)와 무관한 고정 순서로 분리해야 조건을 바꿔도 마커가 제자리에 있다
     const stable = [...cafes].sort((a, b) => a.id.localeCompare(b.id));
-    const sep = separateMarkers(stable.map((c) => proj(c.lat, c.lng)), minX, minY);
+    // 오른쪽 줌 버튼(약 64px)에 마커가 가리지 않게 — 좁은 화면일수록 % 여유가 커야 한다
+    const baseW = size.w || 720;
+    const maxX = Math.min(85, 100 - ((64 + MARKER_W / 2) / baseW) * 100);
+    const sep = separateMarkers(stable.map((c) => proj(c.lat, c.lng)), minX, minY, maxX);
     const byId = new Map(stable.map((c, i) => [c.id, sep[i]]));
     return cafes.map((c) => byId.get(c.id)!);
-  }, [cafes, proj, size.w, size.h]);
+  }, [cafes, proj, size.w, size.h, zoom]);
+
+  // 검색 등으로 고른 카페가 화면 밖이면 보이는 곳으로 지도를 옮긴다
+  useEffect(() => {
+    // 지역을 함께 바꾼 선택(검색)은 위에서 처음 상태로 돌아가 모두 보이므로 옮기지 않는다
+    if (!selectedId || !size.w || lastArea.current !== area) return;
+    const idx = cafes.findIndex((c) => c.id === selectedId);
+    if (idx < 0) return;
+    const pos = positions[idx];
+    const sx = size.w / 2 + ((pos.x - 50) / 100) * size.w * zoom + pan.x;
+    const sy = size.h / 2 + ((pos.y - 50) / 100) * size.h * zoom + pan.y;
+    const inView = sx > 48 && sx < size.w - 64 && sy > 56 && sy < size.h * 0.62;
+    if (inView) return;
+    setPan(clampPan(pan.x + (size.w / 2 - sx), pan.y + (size.h * 0.38 - sy), zoom));
+    // 선택이 바뀔 때만 확인한다 (드래그 중 다시 끌어오지 않도록)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId]);
+
+  // 지역이 바뀌면 투영이 새로 계산되므로 확대·이동도 처음으로 (선택 효과보다 뒤에 둔다)
+  useEffect(() => {
+    if (lastArea.current === area) return;
+    lastArea.current = area;
+    setZi(0);
+    setPan({ x: 0, y: 0 });
+  }, [area]);
 
   const labels = AREA_LABELS[area ?? "all"];
   const me = proj(DEMO_LOCATION.lat, DEMO_LOCATION.lng);
   const showMe = area === null || area === "seongsu";
   const station = area ? AREA_MAP[area] : null;
+  const fromUi = (t: EventTarget) => (t as HTMLElement).closest?.("[data-map-ui]") != null;
 
   return (
     <div
       ref={containerRef}
-      className="relative h-full w-full select-none overflow-hidden bg-[#F3EEE2]"
-      onClick={() => onSelect(null)}
+      className={`relative h-full w-full touch-none select-none overflow-hidden bg-[#F3EEE2] ${
+        dragging ? "cursor-grabbing" : "cursor-grab"
+      }`}
       role="region"
-      aria-label="카페 지도"
+      aria-label="카페 지도 — 끌어서 이동, 휠로 확대"
+      onPointerDown={(e) => {
+        swallowClick.current = false;
+        if (e.button !== 0 || fromUi(e.target)) return;
+        drag.current = { id: e.pointerId, sx: e.clientX, sy: e.clientY, px: pan.x, py: pan.y, moved: false };
+      }}
+      onPointerMove={(e) => {
+        const d = drag.current;
+        if (!d || d.id !== e.pointerId) return;
+        const dx = e.clientX - d.sx;
+        const dy = e.clientY - d.sy;
+        if (!d.moved) {
+          // 살짝 떨린 탭은 클릭으로 처리
+          if (Math.hypot(dx, dy) < 6) return;
+          d.moved = true;
+          setDragging(true);
+          e.currentTarget.setPointerCapture(e.pointerId);
+        }
+        setPan(clampPan(d.px + dx, d.py + dy, zoom));
+      }}
+      onPointerUp={() => {
+        if (drag.current?.moved) swallowClick.current = true;
+        drag.current = null;
+        setDragging(false);
+      }}
+      onPointerCancel={() => {
+        drag.current = null;
+        setDragging(false);
+      }}
+      onClickCapture={(e) => {
+        // 끌기를 마친 직후의 클릭은 마커 선택·해제로 처리하지 않는다
+        if (swallowClick.current) {
+          swallowClick.current = false;
+          e.stopPropagation();
+          e.preventDefault();
+        }
+      }}
+      onClick={(e) => {
+        if (!fromUi(e.target)) onSelect(null);
+      }}
+      onWheel={(e) => {
+        if (fromUi(e.target)) return;
+        wheelAcc.current += e.deltaY;
+        if (Math.abs(wheelAcc.current) < 80) return;
+        const rect = e.currentTarget.getBoundingClientRect();
+        const anchor = { x: e.clientX - rect.left - rect.width / 2, y: e.clientY - rect.top - rect.height / 2 };
+        zoomTo(zi + (wheelAcc.current < 0 ? 1 : -1), anchor);
+        wheelAcc.current = 0;
+      }}
     >
       <div
-        className="absolute inset-0 transition-transform duration-300 ease-out"
-        style={{ transform: `scale(${zoom})`, transformOrigin: "50% 50%" }}
+        className={`absolute inset-0 ${dragging ? "" : "transition-transform duration-300 ease-out"}`}
+        style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`, transformOrigin: "50% 50%" }}
       >
         <MapCanvas />
+      </div>
 
+      {/* 라벨·마커는 확대해도 크기가 그대로이고 위치만 따라간다 */}
+      <div className={`absolute inset-0 ${dragging ? "" : "[&>*]:transition-[left,top] [&>*]:duration-300 [&>*]:ease-out"}`}>
         {labels.map((l) => (
           <span
             key={l.name}
             className="absolute -translate-x-1/2 -translate-y-1/2 whitespace-nowrap text-meta font-bold tracking-wide"
             style={{
-              left: `${l.x}%`,
-              top: `${l.y}%`,
+              ...placeStyle(l.x, l.y, zoom, pan),
               color: "#8D8064",
               textShadow:
                 "0 1px 0 rgba(255,255,255,0.95), 0 -1px 0 rgba(255,255,255,0.95), 1px 0 0 rgba(255,255,255,0.95), -1px 0 0 rgba(255,255,255,0.95)",
@@ -216,7 +353,7 @@ export default function MapView({
         {station && (
           <div
             className="absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-1"
-            style={{ left: "50%", top: "52%" }}
+            style={placeStyle(50, 52, zoom, pan)}
             aria-hidden
           >
             <span className="flex h-6 w-6 items-center justify-center rounded-full border-[3px] border-teal-600 bg-white text-[12px] font-bold text-teal-700 shadow-marker">
@@ -231,7 +368,7 @@ export default function MapView({
         {showMe && (
           <div
             className="absolute -translate-x-1/2 -translate-y-1/2"
-            style={{ left: `${me.x}%`, top: `${me.y}%` }}
+            style={placeStyle(me.x, me.y, zoom, pan)}
             aria-label="현재 위치 (데모)"
           >
             <span className="absolute inset-0 rounded-full bg-sky-400/50 animate-pulse-ring" />
@@ -246,90 +383,105 @@ export default function MapView({
           const planned = plannedIds.has(cafe.id);
           const selected = cafe.id === selectedId;
           const hovered = cafe.id === hoveredId;
+          const named = selected || hovered;
 
-          // 색은 의미가 있을 때만: 적합도 높음(초록) · 영업 외(흐림) · 선택(진함)
-          const pinColor = selected
-            ? "bg-coffee-900 text-cream-50"
+          // 색은 의미가 있을 때만: 매우 적합(초록) · 영업 외(흐림) · 선택(진함)
+          const tone = named
+            ? "border-coffee-900 bg-coffee-900 text-white"
             : !open
-              ? "bg-coffee-200 text-white"
+              ? "border-cream-300 bg-cream-100 text-coffee-400"
               : score >= 85
-                ? "bg-forest-600 text-white"
-                : "bg-coffee-600 text-cream-100";
+                ? "border-forest-600 bg-forest-600 text-white"
+                : "border-coffee-200 bg-white text-coffee-800";
 
           return (
             <button
               key={cafe.id}
+              type="button"
               data-cafe-marker={cafe.id}
               onClick={(e) => {
                 e.stopPropagation();
                 onSelect(selected ? null : cafe.id);
               }}
-              className="marker-enter absolute -translate-x-1/2 -translate-y-full rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-coffee-700"
+              className="group absolute -translate-x-1/2 -translate-y-full rounded-full pb-1.5 hover:!z-[28] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-coffee-700"
               style={{
-                left: `${pos.x}%`,
-                top: `${pos.y}%`,
-                zIndex: selected ? 30 : hovered ? 25 : planned ? 15 : 10,
-                animationDelay: `${Math.min(idx * 25, 300)}ms`,
+                ...placeStyle(pos.x, pos.y, zoom, pan),
+                zIndex: selected ? 30 : hovered ? 25 : planned ? 15 : open ? 10 : 5,
               }}
               aria-label={`${cafe.name}, 적합도 ${score}점${open ? "" : ", 영업 외"}${planned ? ", 작업 예정" : ""}`}
               aria-pressed={selected}
             >
               <span
-                className={`relative flex flex-col items-center transition-transform duration-200 ${
-                  selected ? "scale-125" : hovered ? "scale-110" : "hover:scale-110"
-                }`}
+                className="marker-enter block"
+                style={{ animationDelay: `${Math.min(idx * 20, 300)}ms` }}
               >
                 <span
-                  className={`relative flex h-8 w-8 items-center justify-center rounded-full rounded-br-[4px] shadow-marker transition-colors duration-200 ${pinColor}`}
-                  style={{ transform: "rotate(45deg)" }}
+                  className={`relative flex h-7 items-center gap-1 rounded-full border px-2.5 text-[13px] font-bold shadow-marker transition-[background-color,color,transform] duration-150 ${tone} ${
+                    selected ? "scale-110" : "group-hover:scale-105"
+                  }`}
                 >
-                  <Coffee size={16} strokeWidth={2.2} style={{ transform: "rotate(-45deg)" }} />
+                  {planned && <CalendarCheck2 size={13} strokeWidth={2.4} className="shrink-0" aria-hidden />}
+                  <span className={`max-w-[150px] truncate font-semibold ${named ? "" : "hidden"}`}>{cafe.name}</span>
+                  <span className="num">{score}</span>
                   <span
-                    className="num absolute -right-2 -top-2 flex h-[19px] min-w-[19px] items-center justify-center rounded-full border border-cream-300 bg-white px-0.5 text-[11.5px] font-bold text-coffee-800"
-                    style={{ transform: "rotate(-45deg)" }}
-                  >
-                    {score}
-                  </span>
-                  {planned && (
-                    <span
-                      className="absolute -left-2 -top-2 flex h-[19px] w-[19px] items-center justify-center rounded-full bg-coffee-900 text-cream-50 ring-2 ring-white"
-                      style={{ transform: "rotate(-45deg)" }}
-                    >
-                      <CalendarCheck2 size={11} strokeWidth={2.4} />
-                    </span>
-                  )}
+                    className={`absolute left-1/2 top-full -ml-1 -mt-1 h-2 w-2 rotate-45 border-b border-r ${tone}`}
+                    aria-hidden
+                  />
                 </span>
-                <span className={`h-2.5 w-[2px] ${selected ? "bg-coffee-900" : "bg-coffee-600/70"}`} />
               </span>
             </button>
           );
         })}
       </div>
 
+      {/* 범례 — 숫자가 무엇인지 처음 보는 사람도 알 수 있게, 누르면 계산 기준 */}
+      <button
+        type="button"
+        data-map-ui
+        onClick={onLegendClick}
+        className="absolute left-3 top-3 z-20 flex h-8 items-center gap-2 rounded-full bg-white/95 px-3 text-caption font-medium text-coffee-600 shadow-card transition-colors hover:bg-white hover:text-coffee-800"
+        aria-label={`지도 숫자는 ${purposeLabel} 적합도예요. 계산 기준 보기`}
+      >
+        <span>
+          숫자 = <b className="font-semibold text-coffee-800">{purposeLabel} 적합도</b>
+        </span>
+        <span className="h-3 w-px bg-cream-300" aria-hidden />
+        <span className="flex items-center gap-1" aria-hidden>
+          <span className="h-2.5 w-2.5 rounded-full bg-forest-600" />
+          85+
+        </span>
+        <Info size={14} className="text-coffee-400" aria-hidden />
+      </button>
+
       {/* 줌 컨트롤 */}
       <div
-        className="absolute right-3 top-1/2 z-30 flex -translate-y-1/2 flex-col overflow-hidden rounded-xl border border-cream-300 bg-white shadow-card"
-        onClick={(e) => e.stopPropagation()}
+        data-map-ui
+        className="absolute right-3 top-1/2 z-30 flex -translate-y-1/2 cursor-default flex-col overflow-hidden rounded-xl border border-cream-300 bg-white shadow-card"
       >
         <button
-          onClick={() => setZoom((z) => Math.min(z + 0.25, 1.75))}
-          className="flex h-10 w-10 items-center justify-center text-coffee-600 transition-colors hover:bg-cream-100"
+          type="button"
+          onClick={() => zoomTo(zi + 1)}
+          disabled={zi === ZOOMS.length - 1}
+          className="flex h-10 w-10 items-center justify-center text-coffee-600 transition-colors hover:bg-cream-100 disabled:text-coffee-200 disabled:hover:bg-transparent"
           aria-label="지도 확대"
         >
           <Plus size={18} />
         </button>
         <div className="mx-2 h-px bg-cream-200" />
         <button
-          onClick={() => setZoom((z) => Math.max(z - 0.25, 0.75))}
-          className="flex h-10 w-10 items-center justify-center text-coffee-600 transition-colors hover:bg-cream-100"
+          type="button"
+          onClick={() => zoomTo(zi - 1)}
+          disabled={zi === 0}
+          className="flex h-10 w-10 items-center justify-center text-coffee-600 transition-colors hover:bg-cream-100 disabled:text-coffee-200 disabled:hover:bg-transparent"
           aria-label="지도 축소"
         >
           <Minus size={18} />
         </button>
         <div className="mx-2 h-px bg-cream-200" />
         <button
+          type="button"
           onClick={() => {
-            setZoom(1);
+            reset();
             onSelect(null);
           }}
           className="flex h-10 w-10 items-center justify-center text-coffee-600 transition-colors hover:bg-cream-100"
@@ -352,7 +504,7 @@ export default function MapView({
       <div className="pointer-events-none absolute bottom-2 right-3 z-20 flex items-end gap-2" aria-hidden>
         <span className="text-caption text-coffee-400">Demo Map</span>
         <div className="flex flex-col items-center rounded bg-white/85 px-2 py-1">
-          <span className="text-[11px] font-semibold leading-none text-coffee-500">500m</span>
+          <span className="text-[11px] font-semibold leading-none text-coffee-500">{zoom >= 2 ? "250m" : "500m"}</span>
           <div className="mt-0.5 flex h-[6px] w-14 items-stretch border border-coffee-400">
             <span className="flex-1 bg-coffee-500" />
             <span className="flex-1 bg-white" />
@@ -362,7 +514,11 @@ export default function MapView({
         </div>
       </div>
 
-      {children}
+      {children && (
+        <div data-map-ui className="cursor-default">
+          {children}
+        </div>
+      )}
     </div>
   );
 }

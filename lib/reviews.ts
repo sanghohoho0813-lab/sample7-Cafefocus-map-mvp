@@ -3,21 +3,21 @@ import { PURPOSE_LABEL } from "@/lib/fit";
 import { formatDuration } from "@/lib/time";
 
 export const NOISE_FEEL: { key: NoiseFeel; label: string; tag: string }[] = [
-  { key: "quiet", label: "조용했어요", tag: "조용했어요" },
-  { key: "normal", label: "보통이었어요", tag: "소음 보통" },
-  { key: "loud", label: "시끄러웠어요", tag: "시끄러웠어요" },
+  { key: "quiet", label: "조용함", tag: "조용했어요" },
+  { key: "normal", label: "보통", tag: "소음 보통" },
+  { key: "loud", label: "시끄러움", tag: "시끄러웠어요" },
 ];
 
 export const OUTLET_FEEL: { key: OutletFeel; label: string; tag: string }[] = [
-  { key: "easy", label: "쉽게 찾았어요", tag: "콘센트 여유" },
-  { key: "some", label: "몇 자리만 있어요", tag: "콘센트 조금" },
-  { key: "none", label: "없었어요", tag: "콘센트 없음" },
+  { key: "easy", label: "넉넉함", tag: "콘센트 여유" },
+  { key: "some", label: "몇 자리만", tag: "콘센트 조금" },
+  { key: "none", label: "없음", tag: "콘센트 없음" },
 ];
 
 export const WIFI_FEEL: { key: WifiFeel; label: string; tag: string }[] = [
-  { key: "fast", label: "빨랐어요", tag: "Wi-Fi 빠름" },
-  { key: "ok", label: "쓸 만했어요", tag: "Wi-Fi 보통" },
-  { key: "slow", label: "느렸어요", tag: "Wi-Fi 느림" },
+  { key: "fast", label: "빠름", tag: "Wi-Fi 빠름" },
+  { key: "ok", label: "쓸 만함", tag: "Wi-Fi 보통" },
+  { key: "slow", label: "느림", tag: "Wi-Fi 느림" },
 ];
 
 const tagOf = <K extends string>(list: { key: K; tag: string }[], key: K) =>

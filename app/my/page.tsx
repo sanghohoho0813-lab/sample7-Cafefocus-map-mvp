@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { CalendarCheck2, ChevronRight, RotateCcw, Star, History } from "lucide-react";
+import { CalendarCheck2, ChevronRight, RotateCcw, Star } from "lucide-react";
 import { CAFE_MAP } from "@/lib/data/cafes";
 import { PURPOSE_LABEL } from "@/lib/fit";
 import { PRIORITIES, STAY_OPTIONS } from "@/lib/recommendation";
@@ -12,7 +12,6 @@ import { reviewSummaryTags } from "@/lib/reviews";
 import { useApp } from "@/lib/store";
 import { useNow } from "@/lib/useNow";
 import CafePhoto from "@/components/CafePhoto";
-import EmptyState from "@/components/EmptyState";
 import Sheet from "@/components/Sheet";
 import SampleBridgeCTA from "@/components/SampleBridgeCTA";
 
@@ -50,8 +49,10 @@ export default function MyPage() {
   const stats = [
     { label: "최근 7일 작업", value: `${Math.floor(minutes / 60)}시간${minutes % 60 ? ` ${minutes % 60}분` : ""}` },
     { label: "완료한 작업", value: `${completedCount}회` },
-    { label: "저장한 카페", value: `${favorites.length}곳` },
+    { label: "저장한 카페", value: `${favorites.length}곳`, href: "/favorites" },
   ];
+  // 작업 기록에 붙은 후기는 '지난 기록'에 함께 보이므로, 여기엔 카페에 따로 남긴 후기만
+  const standaloneReviews = reviews.filter((r) => !r.planId);
 
   const priorityText =
     prefs.priorities.length > 0
@@ -71,8 +72,16 @@ export default function MyPage() {
           <dl className="mt-5 grid grid-cols-3 divide-x divide-cream-300 rounded-2xl border border-cream-300/80 bg-white py-4">
             {stats.map((s) => (
               <div key={s.label} className="px-3 text-center sm:px-5">
-                <dt className="text-caption text-coffee-400">{s.label}</dt>
-                <dd className="num mt-1 text-title text-coffee-900">{s.value}</dd>
+                <dt className="text-meta text-coffee-400">{s.label}</dt>
+                <dd className="num mt-1 text-section text-coffee-900">
+                  {s.href ? (
+                    <Link href={s.href} className="underline-offset-4 hover:underline">
+                      {s.value}
+                    </Link>
+                  ) : (
+                    s.value
+                  )}
+                </dd>
               </div>
             ))}
           </dl>
@@ -84,18 +93,17 @@ export default function MyPage() {
             <section>
               <SectionTitle>예정된 작업</SectionTitle>
               {upcoming.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-cream-400 bg-white">
-                  <EmptyState
-                    compact
-                    icon={CalendarCheck2}
-                    title="아직 계획한 작업이 없어요"
-                    description="지도에서 카페를 고르고 '여기서 작업하기'를 눌러보세요."
-                    action={
-                      <Link href="/" className="btn-primary h-11">
-                        지도에서 카페 찾기
-                      </Link>
-                    }
-                  />
+                <div className="flex flex-col gap-4 rounded-2xl border border-cream-300/80 bg-white p-5 sm:flex-row sm:items-center">
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-cream-100 text-coffee-500" aria-hidden>
+                    <CalendarCheck2 size={20} />
+                  </span>
+                  <p className="min-w-0 flex-1 text-meta text-coffee-500">
+                    <b className="block text-title text-coffee-900">예정된 작업이 없어요</b>
+                    카페를 고르고 &lsquo;여기서 작업하기&rsquo;를 누르면 일정이 생겨요.
+                  </p>
+                  <Link href="/" className="btn-primary h-11 shrink-0">
+                    지도에서 카페 찾기
+                  </Link>
                 </div>
               ) : (
                 <ul className="divide-y divide-cream-200 overflow-hidden rounded-2xl border border-cream-300/80 bg-white">
@@ -145,15 +153,18 @@ export default function MyPage() {
                               {formatDate(p.date)} · {timeRange(p.startHour, p.durationMin)}
                             </span>
                             <span className="block truncate text-title text-coffee-900">{cafe.name}</span>
-                            <span className="block truncate text-meta text-coffee-500">
+                            <span className={`block truncate text-meta ${overdue ? "font-semibold text-amber2-500" : "text-coffee-500"}`}>
                               {p.status === "cancelled"
                                 ? "취소한 계획"
                                 : overdue
-                                  ? "기록 전 — 눌러서 체크인 남기기"
+                                  ? "아직 기록 전이에요 · 눌러서 체크인"
                                   : review
                                     ? reviewSummaryTags(review).join(" · ")
                                     : PURPOSE_LABEL[p.purpose]}
                             </span>
+                            {review?.text && (
+                              <span className="mt-1 block truncate text-meta text-coffee-700">“{review.text}”</span>
+                            )}
                           </span>
                           {review && (
                             <span className="num flex shrink-0 items-center gap-1 text-meta font-semibold text-coffee-800">
@@ -170,28 +181,33 @@ export default function MyPage() {
               )}
             </section>
 
-            {/* ---------- 내 후기 ---------- */}
-            <section>
-              <SectionTitle>내 후기 {reviews.length > 0 && <span className="num text-coffee-400">{reviews.length}</span>}</SectionTitle>
-              {reviews.length === 0 ? (
-                <p className="text-meta text-coffee-400">카페 상세의 &lsquo;후기 남기기&rsquo;나 작업 기록으로 남길 수 있어요.</p>
-              ) : (
-                <ul className="space-y-5">
-                  {reviews.slice(0, 5).map((r) => (
+            {/* ---------- 카페에 따로 남긴 후기 (작업 기록 후기는 위에 함께 보임) ---------- */}
+            {standaloneReviews.length > 0 && (
+              <section>
+                <SectionTitle>
+                  카페에 남긴 후기 <span className="num text-coffee-400">{standaloneReviews.length}</span>
+                </SectionTitle>
+                <ul className="divide-y divide-cream-200 overflow-hidden rounded-2xl border border-cream-300/80 bg-white">
+                  {standaloneReviews.slice(0, 5).map((r) => (
                     <li key={r.id}>
-                      <Link href={`/cafe/${r.cafeId}`} className="text-body font-semibold text-coffee-900 underline-offset-4 hover:underline">
-                        {CAFE_MAP[r.cafeId]?.name}
+                      <Link href={`/cafe/${r.cafeId}`} className="block p-4 transition-colors hover:bg-cream-50">
+                        <span className="flex items-center justify-between gap-3">
+                          <span className="truncate text-title text-coffee-900">{CAFE_MAP[r.cafeId]?.name}</span>
+                          <span className="num flex shrink-0 items-center gap-1 text-meta font-semibold text-coffee-800">
+                            <Star size={15} className="fill-amber2-400 text-amber2-400" aria-hidden />
+                            {r.rating}
+                          </span>
+                        </span>
+                        <span className="block truncate text-meta text-coffee-500">
+                          {r.visitLabel} · {reviewSummaryTags(r).join(" · ")}
+                        </span>
+                        {r.text && <span className="mt-1 block truncate text-meta text-coffee-700">“{r.text}”</span>}
                       </Link>
-                      <p className="mt-0.5 flex items-center gap-1.5 text-meta text-coffee-400">
-                        <Star size={14} className="fill-amber2-400 text-amber2-400" aria-hidden />
-                        <span className="num font-semibold text-coffee-700">{r.rating}</span>· {r.visitLabel} · {PURPOSE_LABEL[r.purpose]}
-                      </p>
-                      {r.text && <p className="mt-1.5 text-body text-coffee-700">{r.text}</p>}
                     </li>
                   ))}
                 </ul>
-              )}
-            </section>
+              </section>
+            )}
           </div>
 
           {/* ---------- 보조 정보 ---------- */}
@@ -223,13 +239,9 @@ export default function MyPage() {
               <p className="mt-3 text-caption text-coffee-400">지도·추천의 적합도가 이 목적 기준으로 계산돼요.</p>
             </section>
 
-            <section>
-              <SectionTitle>최근 본 카페</SectionTitle>
-              {recent.length === 0 ? (
-                <p className="flex items-center gap-2 text-meta text-coffee-400">
-                  <History size={15} /> 아직 둘러본 카페가 없어요.
-                </p>
-              ) : (
+            {recent.length > 0 && (
+              <section>
+                <SectionTitle>최근 본 카페</SectionTitle>
                 <ul className="space-y-3">
                   {recent.slice(0, 5).map((id) => {
                     const cafe = CAFE_MAP[id];
@@ -245,8 +257,8 @@ export default function MyPage() {
                     );
                   })}
                 </ul>
-              )}
-            </section>
+              </section>
+            )}
 
             <section>
               <SectionTitle>데모 설정</SectionTitle>

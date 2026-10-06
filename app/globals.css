@@ -92,7 +92,7 @@ body {
 
   .field {
     @apply w-full rounded-xl border border-cream-300 bg-white px-4 py-3 text-body text-coffee-800 outline-none transition-colors duration-200
-      placeholder:text-coffee-300 focus:border-coffee-500;
+      placeholder:text-coffee-400 focus:border-coffee-500;
   }
 
   /* 숫자(시간·점수·거리)는 줄바꿈되지 않고 폭이 흔들리지 않게 */
