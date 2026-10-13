@@ -3,11 +3,11 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
-import { ArrowLeft, CheckCircle2, CalendarX2, AlertCircle, Star, Clock3, CalendarCheck2 } from "lucide-react";
+import { ArrowLeft, CheckCircle2, CalendarX2, AlertCircle, Star, Clock3, CalendarCheck2, Check } from "lucide-react";
 import { CAFE_MAP } from "@/lib/data/cafes";
-import { hourlyAt, levelOf, CROWD_LABEL } from "@/lib/scoring";
-import { calmestHour, fitCaution, fitScore, PURPOSE_LABEL } from "@/lib/fit";
-import { dateWithRelative, formatDate, formatDuration, timeRange } from "@/lib/time";
+import { bestHour, explainFit, PURPOSE_LABEL } from "@/lib/fit";
+import { buildExploreQuery } from "@/lib/exploreQuery";
+import { dateKey, dateWithRelative, formatDate, formatDuration, timeRange } from "@/lib/time";
 import { reviewSummaryTags } from "@/lib/reviews";
 import { useApp } from "@/lib/store";
 import { useNow } from "@/lib/useNow";
@@ -55,10 +55,20 @@ export default function PlanView() {
 
   const isNew = search.get("new") === "1" && plan.status === "planned";
   const review = plan.reviewId ? reviews.find((r) => r.id === plan.reviewId) : undefined;
-  const score = fitScore(cafe, plan.purpose, plan.startHour);
-  const startCrowd = CROWD_LABEL[levelOf(hourlyAt(cafe, plan.startHour).crowd)];
-  const caution = fitCaution(cafe, plan.startHour);
-  const calm = calmestHour(cafe);
+  // 계획한 시간·머무는 시간 그대로 판단 — 상세·지도와 같은 계산
+  const ex = explainFit(cafe, plan.purpose, plan.startHour, { stayMin: plan.durationMin, timeWord: `${plan.startHour}시` });
+  const best = bestHour(cafe, plan.purpose, undefined, plan.durationMin);
+  const mapHref = `/${buildExploreQuery(
+    {
+      area: cafe.area,
+      purpose: plan.purpose,
+      // 오늘 지금 시간대의 계획이면 '지금' 기준 그대로, 아니면 계획한 도착 시간 기준으로 지도를 연다
+      time: now && plan.date === dateKey(now) && plan.startHour === now.getHours() ? "now" : plan.startHour,
+      filters: [],
+      cafe: cafe.id,
+    },
+    { explicit: true }
+  )}`;
 
   const header = isNew
     ? { icon: CheckCircle2, tone: "text-forest-600", title: "작업 계획을 저장했어요", sub: "내 작업에서 언제든 다시 볼 수 있어요." }
@@ -118,21 +128,26 @@ export default function PlanView() {
             <div className="space-y-2.5 border-t border-cream-200 bg-cream-50/60 px-5 py-4">
               <p className="text-label text-coffee-500">도착 전에 알아두세요</p>
               <div className="flex items-center gap-3">
-                <ScorePill score={score} />
-                <p className="text-meta text-coffee-700">
-                  <span className="num">{plan.startHour}시</span> 도착 시 {startCrowd}
+                <ScorePill score={ex.score} />
+                <p className="text-meta font-semibold text-coffee-800">
+                  {ex.pros.slice(0, 2).join(" · ") || "무난한 작업 환경"}
                 </p>
               </div>
-              {caution && (
-                <p className="flex items-center gap-2 text-meta font-medium text-amber2-500">
+              {ex.cons.map((c) => (
+                <p key={c} className="flex items-center gap-2 text-meta font-medium text-amber2-500">
                   <AlertCircle size={15} className="shrink-0" />
-                  {caution}
+                  {c}
+                </p>
+              ))}
+              {best && best.hour !== plan.startHour && best.score - ex.score >= 5 && (
+                <p className="flex items-center gap-2 text-meta text-coffee-500">
+                  <Clock3 size={15} className="shrink-0" />
+                  <span>
+                    <span className="num font-semibold text-coffee-700">{best.hour}시</span>에 가면 더 좋아요 ({best.score}점) ·
+                    데모 예측값
+                  </span>
                 </p>
               )}
-              <p className="flex items-center gap-2 text-meta text-coffee-500">
-                <Clock3 size={15} className="shrink-0" />
-                가장 한산한 시간은 <span className="num font-semibold text-coffee-700">{calm}시</span>예요 · 데모 예측값
-              </p>
             </div>
           )}
 
@@ -156,15 +171,15 @@ export default function PlanView() {
               <Link href="/my" className="btn-primary sm:flex-1">
                 내 작업 일정 보기
               </Link>
-              <Link href="/" className="btn-secondary sm:flex-1">
-                지도로 돌아가기
+              <Link href={mapHref} className="btn-secondary sm:flex-1">
+                지도에서 보기
               </Link>
             </>
           )}
           {!isNew && plan.status === "planned" && (
             <>
               <Link href={`/cafe/${cafe.id}/review?plan=${plan.id}`} className="btn-primary sm:flex-1">
-                다녀왔어요 · 작업 기록하기
+                다녀왔어요 · 체크인하기
               </Link>
               <Link href={`/cafe/${cafe.id}`} className="btn-secondary sm:flex-1">
                 카페 정보 보기
@@ -183,11 +198,18 @@ export default function PlanView() {
           )}
         </div>
 
+        {isNew && (
+          <p className="mt-4 flex items-center justify-center gap-1.5 text-center text-meta text-coffee-500">
+            <Check size={15} strokeWidth={2.6} className="shrink-0 text-forest-600" aria-hidden />
+            지도 마커와 내 작업에 바로 표시했어요
+          </p>
+        )}
+
         {plan.status === "planned" && (
           <div className="mt-3 flex flex-wrap items-center justify-center gap-x-4">
             {isNew && (
               <Link href={`/cafe/${cafe.id}/review?plan=${plan.id}`} className="btn-quiet text-label">
-                작업을 마쳤다면 기록하기
+                작업을 마쳤다면 체크인하기
               </Link>
             )}
             <button type="button" onClick={() => setConfirmOpen(true)} className="btn-quiet text-label text-coffee-400">

@@ -6,11 +6,12 @@ import { ArrowLeft, AlertCircle, Loader2 } from "lucide-react";
 import type { Cafe, Purpose } from "@/lib/types";
 import { AREA_MAP, CAFE_MAP } from "@/lib/data/cafes";
 import { formatHours, hourlyAt, isOpenAt, levelOf } from "@/lib/scoring";
-import { fitScore, PURPOSES, PURPOSE_LABEL } from "@/lib/fit";
+import { bestHour, explainFit, PURPOSES, PURPOSE_LABEL } from "@/lib/fit";
 import { DURATION_OPTIONS, findConflict, isPastSlot, maxDurationFor, startHoursFor } from "@/lib/plans";
-import { addDays, dateKey, dateWithRelative, formatDate, formatDuration, relativeDate, timeRange } from "@/lib/time";
+import { addDays, dateKey, dateWithRelative, FIRST_HOUR, formatDate, formatDuration, relativeDate, timeRange } from "@/lib/time";
 import { useApp } from "@/lib/store";
 import { useNow } from "@/lib/useNow";
+import { useFitContext } from "@/lib/useFitContext";
 import CafePhoto from "@/components/CafePhoto";
 import ScorePill from "@/components/ScorePill";
 
@@ -41,6 +42,7 @@ export default function PlanForm({ cafe }: { cafe: Cafe }) {
   const params = useSearchParams();
   const now = useNow();
   const { prefs, plans, createPlan, hydrated } = useApp();
+  const { stayMin } = useFitContext();
 
   const hours = useMemo(() => startHoursFor(cafe), [cafe]);
   const todayKey = now ? dateKey(now) : null;
@@ -63,6 +65,8 @@ export default function PlanForm({ cafe }: { cafe: Cafe }) {
     if (initialized.current || !now || !hydrated || !todayKey || !tomorrowKey) return;
     initialized.current = true;
     setPurpose(prefs.purpose);
+    // 머무는 시간은 내 기록(없으면 선호 조건)에서 가장 가까운 선택지로 미리 채운다
+    setDurationMin(DURATION_OPTIONS.reduce((a, b) => (Math.abs(b - stayMin) < Math.abs(a - stayMin) ? b : a)));
     const wanted = Number(params.get("hour"));
     const wantedValid = hours.includes(wanted);
     const day = wantedValid && isPastSlot(todayKey, wanted, now) ? tomorrowKey : todayHasSlots ? todayKey : tomorrowKey;
@@ -99,13 +103,22 @@ export default function PlanForm({ cafe }: { cafe: Cafe }) {
   }, [plans]);
   const ready = Boolean(input) && !conflict;
 
+  // 고른 날짜에서 가장 추천하는 도착 시간 (오늘이면 지금 이후)
+  const recommended = useMemo(() => {
+    if (!date) return null;
+    const from = date === todayKey && now ? now.getHours() : FIRST_HOUR;
+    return bestHour(cafe, purpose, from, durationMin);
+  }, [cafe, purpose, durationMin, date, todayKey, now]);
+
   const summary = useMemo(() => {
     if (!input) return null;
     const endHour = Math.min(input.startHour + Math.ceil(input.durationMin / 60), 21);
     const start = hourlyAt(cafe, input.startHour);
     const later = hourlyAt(cafe, endHour);
+    const ex = explainFit(cafe, input.purpose, input.startHour, { stayMin: input.durationMin });
     return {
-      score: fitScore(cafe, input.purpose, input.startHour),
+      score: ex.score,
+      caution: ex.cons[0] ?? null,
       startCrowd: CROWD_PHRASE[levelOf(start.crowd)],
       startNoise: NOISE_PHRASE[levelOf(start.noise)],
       laterCrowd: LEVEL_WORD[levelOf(later.crowd)],
@@ -198,6 +211,7 @@ export default function PlanForm({ cafe }: { cafe: Cafe }) {
                   const taken = date ? busyHours.has(`${date}:${h}`) : false;
                   const lv = levelOf(hourlyAt(cafe, h).crowd);
                   const active = startHour === h;
+                  const isRec = recommended?.hour === h && !past && !taken;
                   return (
                     <button
                       key={h}
@@ -206,11 +220,23 @@ export default function PlanForm({ cafe }: { cafe: Cafe }) {
                       onClick={() => setStartHour(h)}
                       className={`option h-16 flex-col gap-1 disabled:cursor-not-allowed ${taken ? "disabled:opacity-60" : "disabled:opacity-35"} ${active ? "option-active" : "option-idle"}`}
                       aria-pressed={active}
-                      aria-label={`${h}시, ${taken ? "이미 일정 있음" : `예상 ${LEVEL_WORD[lv]}`}${past ? ", 지난 시간" : ""}`}
+                      aria-label={`${h}시, ${taken ? "이미 일정 있음" : `예상 ${LEVEL_WORD[lv]}`}${isRec ? ", 추천" : ""}${past ? ", 지난 시간" : ""}`}
                     >
                       <span className="num text-body font-bold">{h}:00</span>
-                      <span className={`text-caption ${active ? "text-cream-100" : taken ? "font-semibold text-coffee-600" : lv === "busy" ? "font-semibold text-coffee-700" : "text-coffee-400"}`}>
-                        {taken && !past ? "일정 있음" : LEVEL_WORD[lv]}
+                      <span
+                        className={`text-caption ${
+                          active
+                            ? "text-cream-100"
+                            : isRec
+                              ? "font-bold text-forest-600"
+                              : taken
+                                ? "font-semibold text-coffee-600"
+                                : lv === "busy"
+                                  ? "font-semibold text-coffee-700"
+                                  : "text-coffee-400"
+                        }`}
+                      >
+                        {taken && !past ? "일정 있음" : isRec ? "추천" : LEVEL_WORD[lv]}
                       </span>
                     </button>
                   );
@@ -238,13 +264,20 @@ export default function PlanForm({ cafe }: { cafe: Cafe }) {
                 })}
               </div>
               {startHour !== null && (
-                <p className="num mt-2 text-meta text-coffee-400">
-                  {cafe.close === 24 ? "자정" : `${cafe.close}시`}에 문을 닫아요 · {timeRange(startHour, durationMin)}
+                <p className="num mt-2 text-meta text-coffee-500">
+                  {timeRange(startHour, durationMin)} ·{" "}
+                  {maxDurationFor(cafe, startHour) < DURATION_OPTIONS[DURATION_OPTIONS.length - 1] ? (
+                    <b className="font-semibold text-amber2-500">
+                      {cafe.close === 24 ? "자정" : `${cafe.close}시`} 마감이라 최대 {formatDuration(maxDurationFor(cafe, startHour))}
+                    </b>
+                  ) : (
+                    <>{cafe.close === 24 ? "자정" : `${cafe.close}시`}에 문을 닫아요</>
+                  )}
                 </p>
               )}
             </Step>
 
-            <Step n={4} title="어떤 작업을 하나요?">
+            <Step n={4} title="무엇을 하나요?">
               <div className="flex flex-wrap gap-2">
                 {PURPOSES.map((p) => (
                   <button
@@ -258,17 +291,18 @@ export default function PlanForm({ cafe }: { cafe: Cafe }) {
                   </button>
                 ))}
               </div>
-            </Step>
-
-            <Step n={5} title="메모" hint="선택">
-              <input
-                value={memo}
-                onChange={(e) => setMemo(e.target.value.slice(0, 60))}
-                placeholder="예: 분기 보고서 초안 마무리"
-                className="field"
-                maxLength={60}
-                aria-label="메모 (선택, 60자 이내)"
-              />
+              <label className="mt-4 block">
+                <span className="mb-1.5 flex items-baseline gap-2 text-label text-coffee-700">
+                  할 일 <span className="text-caption font-normal text-coffee-400">선택 · 체크인할 때 다시 보여드려요</span>
+                </span>
+                <input
+                  value={memo}
+                  onChange={(e) => setMemo(e.target.value.slice(0, 60))}
+                  placeholder="예: 분기 보고서 초안 마무리"
+                  className="field"
+                  maxLength={60}
+                />
+              </label>
               <p className="num mt-1.5 text-right text-caption text-coffee-400">{memo.length}/60</p>
             </Step>
           </div>
@@ -290,9 +324,16 @@ export default function PlanForm({ cafe }: { cafe: Cafe }) {
                       도착할 땐 {summary.startCrowd} {summary.startNoise}
                     </p>
                   </div>
-                  <p className="num text-meta text-coffee-400">
-                    {summary.endHour}시쯤엔 {summary.laterCrowd} 예상 · 데모 예측값
-                  </p>
+                  {summary.caution ? (
+                    <p className="flex items-center gap-1.5 text-meta font-medium text-amber2-500">
+                      <AlertCircle size={15} className="shrink-0" aria-hidden />
+                      {summary.caution}
+                    </p>
+                  ) : (
+                    <p className="num text-meta text-coffee-400">
+                      {summary.endHour}시쯤에도 {summary.laterCrowd} 예상 · 데모 예측값
+                    </p>
+                  )}
                 </div>
               ) : (
                 <p className="mt-3 text-meta text-coffee-400">날짜와 도착 시간을 고르면 예상 환경을 알려드려요.</p>

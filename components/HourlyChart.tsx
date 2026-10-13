@@ -24,12 +24,18 @@ export default function HourlyChart({
   metric,
   selectedHour,
   onSelect,
+  nowHour,
+  bestHour,
   height = 120,
 }: {
   cafe: Cafe;
   metric: "noise" | "crowd";
   selectedHour: number;
   onSelect: (hour: number) => void;
+  /** 지금 시각 — 축에 "지금" 표시 */
+  nowHour?: number;
+  /** 가장 추천하는 시간 — 막대를 초록으로 */
+  bestHour?: number;
   height?: number;
 }) {
   const labelMap = metric === "noise" ? NOISE_LABEL : CROWD_LABEL;
@@ -53,7 +59,7 @@ export default function HourlyChart({
             >
               <span
                 className={`relative block w-full rounded-t-[4px] transition-colors duration-200 ${
-                  sel ? "bg-coffee-900" : open ? `${BAR[lv]} group-hover:bg-coffee-400` : "bg-cream-300"
+                  sel ? "bg-coffee-900" : !open ? "bg-cream-300" : p.hour === bestHour ? "bg-forest-500 group-hover:bg-forest-600" : `${BAR[lv]} group-hover:bg-coffee-400`
                 }`}
                 style={{ height: `${Math.max(v, 8)}%` }}
               >
@@ -77,7 +83,7 @@ export default function HourlyChart({
               p.hour === selectedHour ? "font-bold text-coffee-900" : "text-coffee-400"
             }`}
           >
-            {p.hour === selectedHour || p.hour % 3 === 0 ? p.hour : ""}
+            {p.hour === nowHour ? "지금" : p.hour === selectedHour || p.hour === bestHour || p.hour % 3 === 0 ? p.hour : ""}
           </span>
         ))}
       </div>
@@ -88,6 +94,12 @@ export default function HourlyChart({
             {shortLabel(labelMap[lv])}
           </span>
         ))}
+        {bestHour !== undefined && (
+          <span className="flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-sm bg-forest-500" />
+            가장 추천
+          </span>
+        )}
         <span className="flex items-center gap-1.5">
           <span className="h-2.5 w-2.5 rounded-sm bg-cream-300" />
           영업 외

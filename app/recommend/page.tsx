@@ -10,6 +10,7 @@ import { AREA_MAP } from "@/lib/data/cafes";
 import { distanceKm, formatDistance } from "@/lib/scoring";
 import { useApp } from "@/lib/store";
 import { useFitContext } from "@/lib/useFitContext";
+import { formatDuration } from "@/lib/time";
 import CafePhoto from "@/components/CafePhoto";
 import CafeCard from "@/components/CafeCard";
 import ScorePill from "@/components/ScorePill";
@@ -27,7 +28,7 @@ const STEPS = ["작업 목적", "중요한 조건", "머무는 시간"];
 
 export default function RecommendPage() {
   const { prefs, setPrefs } = useApp();
-  const { hour, now, timeLabel } = useFitContext();
+  const { hour, now, timeLabel, stayMin, stayFromHistory } = useFitContext();
   const [step, setStep] = useState(0);
   const [purpose, setPurpose] = useState<Purpose | null>(null);
   const [priorities, setPriorities] = useState<PriorityKey[] | null>(null);
@@ -37,7 +38,9 @@ export default function RecommendPage() {
   // 처음엔 저장된 선호 조건으로 채워 둔다 (다시 들어와도 이어서 고를 수 있게)
   const curPurpose = purpose ?? prefs.purpose;
   const curPriorities = priorities ?? prefs.priorities;
-  const curStay = stay ?? prefs.stay;
+  // 머무는 시간은 내 작업 기록이 있으면 그 평균에 가까운 선택지로 미리 골라 둔다
+  const learnedStay: StayLength | null = stayFromHistory ? (stayMin <= 60 ? "short" : stayMin <= 120 ? "medium" : "long") : null;
+  const curStay = stay ?? learnedStay ?? prefs.stay;
 
   const run = () => {
     const next = { purpose: curPurpose, priorities: curPriorities, stay: curStay };
@@ -160,6 +163,11 @@ export default function RecommendPage() {
         {step === 2 && (
           <section className="mt-8 animate-fade-up">
             <h2 className="text-section text-coffee-900">얼마나 머물 예정인가요?</h2>
+            {learnedStay && stay === null && (
+              <p className="mt-1 text-meta text-coffee-500">
+                내 작업 기록으로 보면 보통 <b className="num font-semibold text-coffee-800">{formatDuration(stayMin)}</b> 머물러요.
+              </p>
+            )}
             <div className="mt-4 grid gap-2.5 sm:grid-cols-3">
               {STAY_OPTIONS.map((s) => {
                 const active = curStay === s.key;
@@ -234,10 +242,10 @@ export default function RecommendPage() {
                       </li>
                     ))}
                   </ul>
-                  {fitCaution(top.cafe, hour) && (
+                  {fitCaution(top.cafe, curPurpose, hour, { stayMin }) && (
                     <p className="mt-3 flex items-center gap-2 text-meta font-medium text-amber2-500">
                       <AlertCircle size={16} className="shrink-0" />
-                      {fitCaution(top.cafe, hour)}
+                      {fitCaution(top.cafe, curPurpose, hour, { stayMin })}
                     </p>
                   )}
                   <div className="mt-6 flex flex-col gap-2.5 sm:flex-row">

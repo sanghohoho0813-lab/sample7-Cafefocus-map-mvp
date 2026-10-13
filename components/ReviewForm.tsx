@@ -4,9 +4,9 @@ import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Star, Loader2, CheckCircle2, ChevronDown } from "lucide-react";
-import type { Cafe, NoiseFeel, OutletFeel, Purpose, WifiFeel } from "@/lib/types";
+import type { Cafe, NoiseFeel, OutletFeel, Purpose, SeatFeel, WifiFeel } from "@/lib/types";
 import { PURPOSES, PURPOSE_LABEL } from "@/lib/fit";
-import { NOISE_FEEL, OUTLET_FEEL, WIFI_FEEL } from "@/lib/reviews";
+import { NOISE_FEEL, OUTLET_FEEL, SEAT_FEEL, WIFI_FEEL } from "@/lib/reviews";
 import { DURATION_OPTIONS } from "@/lib/plans";
 import { dateKey, formatDate, formatDuration, timeRange, visitLabel } from "@/lib/time";
 import { useNow } from "@/lib/useNow";
@@ -17,7 +17,8 @@ import PageSkeleton from "@/components/PageSkeleton";
 
 const VISIT_OPTIONS = ["평일 오전", "평일 오후", "평일 저녁", "주말 오전", "주말 오후", "주말 저녁"];
 
-const RATING_WORD = ["", "아쉬웠어요", "그저 그랬어요", "괜찮았어요", "좋았어요", "아주 좋았어요"];
+/** 별점은 "카페가 좋았나"가 아니라 "여기서 작업이 잘 됐나" */
+const RATING_WORD = ["", "거의 못 했어요", "아쉬웠어요", "할 만했어요", "잘 됐어요", "아주 잘 됐어요"];
 
 function Group({ title, optional = false, children }: { title: string; optional?: boolean; children: React.ReactNode }) {
   return (
@@ -83,6 +84,7 @@ export default function ReviewForm({ cafe }: { cafe: Cafe }) {
   const [noise, setNoise] = useState<NoiseFeel | null>(null);
   const [outlet, setOutlet] = useState<OutletFeel | null>(null);
   const [wifi, setWifi] = useState<WifiFeel | null>(null);
+  const [seat, setSeat] = useState<SeatFeel | null>(null);
   const [text, setText] = useState("");
   const now = useNow();
   const [visitPicked, setVisitPicked] = useState<string | null>(null);
@@ -95,10 +97,11 @@ export default function ReviewForm({ cafe }: { cafe: Cafe }) {
   const doneRef = useRef(false);
 
   const missing = [
-    rating === 0 && "별점",
+    rating === 0 && "작업 만족도",
     !noise && "소음",
     !outlet && "콘센트",
     !wifi && "Wi-Fi",
+    !seat && "좌석",
   ].filter(Boolean) as string[];
   const valid = missing.length === 0;
 
@@ -123,7 +126,7 @@ export default function ReviewForm({ cafe }: { cafe: Cafe }) {
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!valid || submitting || doneRef.current || !noise || !outlet || !wifi) return;
+    if (!valid || submitting || doneRef.current || !noise || !outlet || !wifi || !seat) return;
     setSubmitting(true);
     window.setTimeout(() => {
       doneRef.current = true;
@@ -137,10 +140,11 @@ export default function ReviewForm({ cafe }: { cafe: Cafe }) {
         noise,
         outlet,
         wifi,
+        seat,
         text,
       });
       // 계획 기록은 완료 화면이 결과를 보여주므로 알림은 단독 후기에만
-      if (!plan) showToast("후기를 남겼어요");
+      if (!plan) showToast("체크인을 남겼어요");
       router.replace(plan ? `/plans/${plan.id}` : `/cafe/${cafe.id}`);
     }, 400);
   };
@@ -158,7 +162,7 @@ export default function ReviewForm({ cafe }: { cafe: Cafe }) {
         >
           <ArrowLeft size={20} />
         </button>
-        <h1 className="text-title text-coffee-900">{plan ? "작업 기록하기" : "작업 후기 남기기"}</h1>
+        <h1 className="text-title text-coffee-900">작업 체크인</h1>
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto">
@@ -170,14 +174,15 @@ export default function ReviewForm({ cafe }: { cafe: Cafe }) {
               <p className="num truncate text-meta text-coffee-400">
                 {plan
                   ? `${formatDate(plan.date)} ${timeRange(plan.startHour, plan.durationMin)}`
-                  : "다른 작업자에게 도움이 되는 체크인을 남겨주세요"}
+                  : "다음에 올 작업자에게 실제 작업 환경을 알려주세요"}
               </p>
+              {plan?.memo && <p className="mt-0.5 truncate text-meta font-semibold text-coffee-700">할 일 · {plan.memo}</p>}
             </div>
           </div>
 
-          <Group title="만족도">
+          <Group title={plan?.memo ? "계획한 일은 잘 됐나요?" : "여기서 작업은 잘 됐나요?"}>
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-              <div className="flex gap-1" role="radiogroup" aria-label="별점">
+              <div className="flex gap-1" role="radiogroup" aria-label="작업 만족도">
                 {[1, 2, 3, 4, 5].map((n) => (
                   <button
                     key={n}
@@ -207,6 +212,7 @@ export default function ReviewForm({ cafe }: { cafe: Cafe }) {
               <Choice label="소음" options={NOISE_FEEL} value={noise} onChange={setNoise} />
               <Choice label="콘센트" options={OUTLET_FEEL} value={outlet} onChange={setOutlet} />
               <Choice label="Wi-Fi" options={WIFI_FEEL} value={wifi} onChange={setWifi} />
+              <Choice label="좌석·테이블" options={SEAT_FEEL} value={seat} onChange={setSeat} />
             </div>
           </Group>
 
@@ -292,15 +298,15 @@ export default function ReviewForm({ cafe }: { cafe: Cafe }) {
             </div>
           )}
 
-          <Group title="한 줄 후기" optional>
+          <Group title="다음 작업자에게 한마디" optional>
             <textarea
               value={text}
               onChange={(e) => setText(e.target.value.slice(0, 120))}
               rows={3}
               maxLength={120}
-              placeholder="예: 오전엔 조용하고 창가 자리에 콘센트가 있어요."
+              placeholder="예: 창가 1인석에 콘센트가 있어요. 3시 이후엔 붐벼요."
               className="field resize-none"
-              aria-label="한 줄 후기 (선택, 120자 이내)"
+              aria-label="다음 작업자에게 한마디 (선택, 120자 이내)"
             />
             <p className="num mt-1.5 text-right text-caption text-coffee-400">{text.length}/120</p>
           </Group>
@@ -317,7 +323,7 @@ export default function ReviewForm({ cafe }: { cafe: Cafe }) {
           )}
           <button type="submit" disabled={!valid || submitting} className="btn-primary w-full sm:ml-auto sm:w-auto sm:min-w-[240px]">
             {submitting && <Loader2 size={18} className="animate-spin" />}
-            {submitting ? "저장하는 중…" : plan ? "기록 저장하고 작업 완료" : "후기 저장"}
+            {submitting ? "저장하는 중…" : plan ? "체크인하고 작업 완료" : "체크인 남기기"}
           </button>
         </div>
       </div>

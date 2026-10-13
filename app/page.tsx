@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Info, List, Map as MapIcon, RotateCcw } from "lucide-react";
+import { History, Info, List, Map as MapIcon, RotateCcw } from "lucide-react";
 import type { CafeMetrics, Plan } from "@/lib/types";
-import { CAFES, CAFE_MAP } from "@/lib/data/cafes";
+import { AREA_MAP, CAFES, CAFE_MAP } from "@/lib/data/cafes";
 import { applyFilters } from "@/lib/filters";
 import { PURPOSE_LABEL, PURPOSE_WEIGHTS, rankByFit } from "@/lib/fit";
-import { dateKey } from "@/lib/time";
+import { dateKey, formatDuration, hm, relativeDate } from "@/lib/time";
+import { nextPlan } from "@/lib/plans";
+import { HABIT_MIN_VISITS } from "@/lib/personal";
 import { buildExploreQuery, parseExploreQuery } from "@/lib/exploreQuery";
 import { useApp } from "@/lib/store";
 import { useFitContext } from "@/lib/useFitContext";
@@ -42,7 +44,7 @@ function CardSkeleton() {
 
 export default function HomePage() {
   const { area, filters, setFilters, plans, hydrated, setArea, timeSel, setTimeSel, setPurpose } = useApp();
-  const { purpose, hour, now, timeLabel } = useFitContext();
+  const { purpose, hour, now, timeLabel, timeWord, stayMin, stayFromHistory, habits } = useFitContext();
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   // ---- 지도 상태 ↔ 주소 동기화 (새로고침·공유·뒤로가기에도 같은 화면) ----
@@ -72,10 +74,11 @@ export default function HomePage() {
   const [sheet, setSheet] = useState<SheetState>("collapsed");
   const [aboutOpen, setAboutOpen] = useState(false);
 
+
   const ranked = useMemo(() => {
     const base = area ? CAFES.filter((c) => c.area === area) : CAFES;
-    return rankByFit(applyFilters(base, filters, hour), purpose, hour);
-  }, [area, filters, hour, purpose]);
+    return rankByFit(applyFilters(base, filters, hour), purpose, hour, stayMin);
+  }, [area, filters, hour, purpose, stayMin]);
 
   const { cafes, scores, openIds } = useMemo(
     () => ({
@@ -98,6 +101,13 @@ export default function HomePage() {
     return map;
   }, [plans, now]);
   const plannedIds = useMemo(() => new Set(Object.keys(planByCafe)), [planByCafe]);
+
+  // 다가오는 내 작업 — 지도 위에 띄워, 계획이 곧바로 지도에 반영된 걸 느끼게 한다
+  const upcoming = useMemo(() => {
+    const p = hydrated ? nextPlan(plans, now) : null;
+    if (!p || !CAFE_MAP[p.cafeId]) return null;
+    return { cafeId: p.cafeId, label: `${relativeDate(p.date, now)} ${hm(p.startHour)} · ${CAFE_MAP[p.cafeId].name}` };
+  }, [hydrated, plans, now]);
 
   const selected = selectedId ? cafes.find((c) => c.id === selectedId) ?? null : null;
 
@@ -135,6 +145,12 @@ export default function HomePage() {
     });
   };
 
+  /** 목록에서 "지도에서 보기" — 모바일은 시트를 내려 지도로 돌아간다 */
+  const locate = (id: string) => {
+    setSheet("collapsed");
+    selectCafe(id);
+  };
+
   const onSearchCafe = (id: string) => {
     const cafe = CAFE_MAP[id];
     if (!cafe) return;
@@ -147,45 +163,84 @@ export default function HomePage() {
   // 저장된 목적과 실제 현재 시각을 안 뒤에 그린다 — 로드 직후 순위·점수가 바뀌어 보이는 것을 막는다
   const ready = hydrated && now !== null;
 
+  // 지금 조건에서 가장 잘 맞는 곳 (영업 중일 때만)
+  const pick = ranked[0]?.open ? ranked[0].cafe : null;
+  const rest = pick ? cafes.slice(1) : cafes;
+  const when = timeWord === "지금" ? "지금" : `${hour}시에`;
+
   const empty = (
     <EmptyState
       title="조건에 맞는 카페가 아직 없어요"
-      description="필터를 줄이거나 다른 지역·시간을 골라보세요."
+      description="조건을 줄이거나 다른 지역·시간을 골라보세요."
       action={
         <button type="button" onClick={() => setFilters([])} className="btn-secondary h-11">
           <RotateCcw size={16} />
-          필터 초기화
+          조건 모두 지우기
         </button>
       }
     />
   );
 
-  const listItems = (withHover: boolean) =>
-    ranked.map(({ cafe }) => (
-      <CafeCard
-        key={cafe.id}
-        cafe={cafe}
-        purpose={purpose}
-        hour={hour}
-        now={now}
-        plan={planByCafe[cafe.id]}
-        highlighted={cafe.id === selectedId || (withHover && cafe.id === hoveredId)}
-        onHover={withHover ? setHoveredId : undefined}
-      />
-    ));
+  const card = (cafe: (typeof cafes)[number], withHover: boolean, variant: "row" | "pick" = "row", actions = false) => (
+    <CafeCard
+      key={cafe.id}
+      cafe={cafe}
+      variant={variant}
+      actions={actions}
+      purpose={purpose}
+      hour={hour}
+      now={now}
+      plan={planByCafe[cafe.id]}
+      highlighted={cafe.id === selectedId || (withHover && cafe.id === hoveredId)}
+      onHover={withHover ? setHoveredId : undefined}
+      onLocate={locate}
+    />
+  );
 
+  const list = (withHover: boolean) => (
+    <>
+      {pick && card(pick, withHover, "pick", true)}
+      {pick && rest.length > 0 && (
+        <p className="px-1 pb-0.5 pt-3 text-caption font-semibold text-coffee-400">
+          다른 후보 <span className="num">{rest.length}</span>곳
+        </p>
+      )}
+      {rest.map((c) => card(c, withHover))}
+    </>
+  );
+
+  const areaName = area ? AREA_MAP[area].name : "모든 지역";
   const listHeading = (
     <div className="min-w-0">
       <h2 className="truncate text-title text-coffee-900">
-        <span className="num">{ranked.length}곳</span>
-        <span className="font-semibold text-coffee-500"> · {purposeLabel} 적합도순</span>
+        {when} {purposeLabel}하기 좋은 곳
       </h2>
-      <p className="truncate text-caption text-coffee-400">{timeLabel.replace(" 기준", "")} 기준 · 데모 예측값</p>
+      <p className="truncate text-caption text-coffee-400">
+        {area ? `${areaName} · ` : ""}
+        <span className="num">{ranked.length}</span>곳 · <span className="num">{formatDuration(stayMin)}</span> 기준
+        {stayFromHistory && <span className="font-semibold text-coffee-600"> · 내 기록 반영</span>}
+      </p>
     </div>
   );
 
-  // 접힘 상태에서는 고른 카페, 없으면 1위 카페를 바로 보여준다
-  const peek = selected ?? cafes[0] ?? null;
+  // 내 기록으로 자주 가는 지역이 있으면 한 번에 좁혀 볼 수 있게 제안 (자동으로 바꾸지는 않는다)
+  const areaSuggestion =
+    area === null && habits.topArea && habits.topAreaCount >= HABIT_MIN_VISITS ? (
+      <button
+        type="button"
+        onClick={() => {
+          setArea(habits.topArea);
+          setSelectedId(null);
+        }}
+        className="mt-2 inline-flex h-8 items-center gap-1 rounded-full bg-cream-100 px-3 text-caption font-semibold text-coffee-700 hover:bg-cream-200"
+      >
+        <History size={13} aria-hidden />
+        자주 가는 {AREA_MAP[habits.topArea].name}만 보기
+      </button>
+    ) : null;
+
+  // 접힘 상태에서는 고른 카페, 없으면 가장 잘 맞는 곳을 바로 보여준다
+  const peek = selected ?? pick ?? cafes[0] ?? null;
 
   return (
     <div className="flex h-full flex-col">
@@ -209,6 +264,8 @@ export default function HomePage() {
             area={area}
             purposeLabel={purposeLabel}
             onLegendClick={() => setAboutOpen(true)}
+            upcoming={upcoming}
+            bottomInset={peek ? 262 : 132}
           >
             {selected && (
               <div className="absolute bottom-4 left-4 z-30 hidden lg:block">
@@ -221,7 +278,7 @@ export default function HomePage() {
           <MobileBottomSheet
             state={sheet}
             onStateChange={setSheet}
-            collapsedHeight={peek ? 236 : 132}
+            collapsedHeight={peek ? 262 : 132}
             header={
               <div className="flex items-center justify-between gap-3">
                 {listHeading}
@@ -241,28 +298,32 @@ export default function HomePage() {
             ) : ranked.length === 0 ? (
               empty
             ) : sheet === "collapsed" && peek ? (
-              <CafeCard
-                cafe={peek}
-                purpose={purpose}
-                hour={hour}
-                now={now}
-                plan={planByCafe[peek.id]}
-                highlighted={peek.id === selectedId}
-              />
+              // 접힘: 고른 곳(또는 가장 잘 맞는 곳) 하나만 — 제목이 이미 "좋은 곳"이라 라벨은 생략
+              peek.id === pick?.id && !selected ? (
+                <CafeCard cafe={peek} variant="pick" purpose={purpose} hour={hour} now={now} plan={planByCafe[peek.id]} hideLabel />
+              ) : (
+                card(peek, false)
+              )
             ) : (
-              <div className="space-y-2.5">{listItems(false)}</div>
+              <div className="space-y-2.5">
+                {areaSuggestion}
+                {list(false)}
+              </div>
             )}
           </MobileBottomSheet>
         </div>
 
         {/* ---------- 데스크톱 목록 패널 ---------- */}
         <aside className="hidden w-[380px] shrink-0 flex-col border-l border-cream-300/70 bg-cream-50 lg:flex xl:w-[440px] min-[1440px]:w-[500px]">
-          <div className="flex items-center justify-between gap-3 border-b border-cream-300/70 px-5 py-3.5">
-            {listHeading}
-            <button type="button" onClick={() => setAboutOpen(true)} className="btn-quiet h-9 shrink-0 px-2 text-label">
-              <Info size={15} />
-              기준 보기
-            </button>
+          <div className="border-b border-cream-300/70 px-5 py-3.5">
+            <div className="flex items-center justify-between gap-3">
+              {listHeading}
+              <button type="button" onClick={() => setAboutOpen(true)} className="btn-quiet h-9 shrink-0 px-2 text-label">
+                <Info size={15} />
+                기준
+              </button>
+            </div>
+            {areaSuggestion}
           </div>
           <div className="min-h-0 flex-1 space-y-2.5 overflow-y-auto p-4 pb-24">
             {!ready ? (
@@ -274,7 +335,7 @@ export default function HomePage() {
             ) : ranked.length === 0 ? (
               empty
             ) : (
-              listItems(true)
+              list(true)
             )}
           </div>
         </aside>
@@ -284,12 +345,12 @@ export default function HomePage() {
         open={aboutOpen}
         onClose={() => setAboutOpen(false)}
         title="적합도는 이렇게 계산해요"
-        description={`지금 기준: ${purposeLabel} · ${timeLabel.replace(" 기준", "")}`}
+        description={`지금 기준: ${purposeLabel} · ${timeLabel.replace(" 기준", "")} · ${formatDuration(stayMin)}`}
       >
         <div className="space-y-4 text-body text-coffee-600">
           <p>
-            선택한 <b className="text-coffee-800">목적</b>과 <b className="text-coffee-800">시간대</b>를 기준으로 작업
-            환경을 0~100점으로 종합한 값이에요. 목적이 바뀌면 항목별 비중이 달라져요.
+            고른 <b className="text-coffee-800">목적</b>에 따라 항목별 비중을 달리해 0~100점으로 종합해요. 소음·혼잡은 도착
+            시간부터 <b className="text-coffee-800">머무는 동안</b>의 예측을 함께 봐요.
           </p>
           <ul className="space-y-2">
             {(Object.entries(PURPOSE_WEIGHTS[purpose]) as [keyof CafeMetrics, number][])
@@ -310,6 +371,13 @@ export default function HomePage() {
                 </li>
               ))}
           </ul>
+          <p className="text-meta text-coffee-600">
+            지금은 <b className="num text-coffee-800">{formatDuration(stayMin)}</b> 머무는 기준이에요
+            {stayFromHistory
+              ? " — 내 작업 기록의 평균 시간이에요."
+              : ". 작업 기록이 2건 이상 쌓이면 내 평균 시간으로 바뀌어요."}{" "}
+            마감까지 시간이 부족하면 감점하고, 오래 머물기 편한 곳은 조금 더해요.
+          </p>
           <p className="rounded-xl bg-cream-100 px-4 py-3 text-meta text-coffee-500">
             지금은 데모 데이터로 계산한 예측값이에요. 실제 서비스에서는 방문자 체크인과 공공·매장 데이터로 갱신할 수
             있어요.

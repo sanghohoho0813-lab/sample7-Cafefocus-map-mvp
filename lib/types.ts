@@ -135,6 +135,7 @@ export type PlanInput = Pick<
 export type NoiseFeel = "quiet" | "normal" | "loud";
 export type OutletFeel = "easy" | "some" | "none";
 export type WifiFeel = "fast" | "ok" | "slow";
+export type SeatFeel = "comfy" | "ok" | "tight";
 
 export interface UserReview {
   id: string;
@@ -149,6 +150,8 @@ export interface UserReview {
   noise: NoiseFeel;
   outlet: OutletFeel;
   wifi: WifiFeel;
+  /** 좌석·테이블 — 이전 버전 기록에는 없을 수 있다 */
+  seat?: SeatFeel;
   text: string;
 }
 

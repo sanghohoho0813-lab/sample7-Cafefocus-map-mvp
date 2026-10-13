@@ -37,13 +37,13 @@ interface RowDef {
 
 export default function ComparePage() {
   const { compare, toggleCompare, clearCompare, hydrated, favorites } = useApp();
-  const { purpose, hour, timeLabel } = useFitContext();
+  const { purpose, hour, timeLabel, stayMin, timeWord } = useFitContext();
   const [pickerOpen, setPickerOpen] = useState(false);
 
   const cafes = compare.map((id) => CAFES.find((c) => c.id === id)).filter((c): c is Cafe => Boolean(c));
 
   const rows: RowDef[] = [
-    { label: "적합도", value: (c, h) => String(fitScore(c, purpose, h)), rank: (c, h) => fitScore(c, purpose, h) },
+    { label: "적합도", value: (c, h) => String(fitScore(c, purpose, h, stayMin)), rank: (c, h) => fitScore(c, purpose, h, stayMin) },
     {
       label: `${hour}시 혼잡도`,
       value: (c, h) => (isOpenAt(c, h) ? CROWD_SHORT[levelOf(hourlyAt(c, h).crowd)] : "영업 외"),
@@ -69,15 +69,15 @@ export default function ComparePage() {
     return best;
   };
 
-  const winner = cafes.length >= 2 ? rankByFit(cafes, purpose, hour)[0] : null;
-  const winnerReasons = winner ? fitReasons(winner.cafe, purpose, hour, 3) : [];
+  const winner = cafes.length >= 2 ? rankByFit(cafes, purpose, hour, stayMin)[0] : null;
+  const winnerReasons = winner ? fitReasons(winner.cafe, purpose, hour, 3, { stayMin, timeWord }) : [];
 
   // 이미 담은 카페도 목록에 남겨 두고 체크 표시로 켜고 끈다 (시트를 닫지 않고 여러 곳을 고를 수 있게)
   const candidates = useMemo(() => {
-    const saved = rankByFit(CAFES.filter((c) => favorites.includes(c.id)), purpose, hour);
-    const others = rankByFit(CAFES.filter((c) => !favorites.includes(c.id)), purpose, hour);
+    const saved = rankByFit(CAFES.filter((c) => favorites.includes(c.id)), purpose, hour, stayMin);
+    const others = rankByFit(CAFES.filter((c) => !favorites.includes(c.id)), purpose, hour, stayMin);
     return [...saved.map((r) => ({ ...r, saved: true })), ...others.map((r) => ({ ...r, saved: false }))];
-  }, [favorites, purpose, hour]);
+  }, [favorites, purpose, hour, stayMin]);
 
   const picker = (
     <Sheet
@@ -255,7 +255,7 @@ export default function ComparePage() {
                             className={`px-3 py-3 text-body tabular-nums sm:px-4 ${i === best ? "font-bold text-coffee-900" : "text-coffee-700"}`}
                           >
                             <span className="inline-flex items-center gap-1.5">
-                              {row.label === "적합도" ? <ScorePill score={fitScore(c, purpose, hour)} muted={!isOpenAt(c, hour)} /> : row.value(c, hour)}
+                              {row.label === "적합도" ? <ScorePill score={fitScore(c, purpose, hour, stayMin)} muted={!isOpenAt(c, hour)} /> : row.value(c, hour)}
                               {i === best && row.label !== "적합도" && (
                                 <Check size={15} strokeWidth={2.8} className="text-forest-600" aria-label="가장 좋음" />
                               )}

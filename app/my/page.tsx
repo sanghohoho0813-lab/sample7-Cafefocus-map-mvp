@@ -3,11 +3,12 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { CalendarCheck2, ChevronRight, RotateCcw, Star } from "lucide-react";
-import { CAFE_MAP } from "@/lib/data/cafes";
+import { AREA_MAP, CAFE_MAP } from "@/lib/data/cafes";
 import { PURPOSE_LABEL } from "@/lib/fit";
 import { PRIORITIES, STAY_OPTIONS } from "@/lib/recommendation";
 import { sortPlans, weeklyMinutes } from "@/lib/plans";
-import { dateKey, formatDate, relativeDate, timeRange } from "@/lib/time";
+import { dateKey, formatDate, formatDuration, relativeDate, timeRange } from "@/lib/time";
+import { habitsFrom, HABIT_MIN_VISITS, LIKE_LABEL } from "@/lib/personal";
 import { reviewSummaryTags } from "@/lib/reviews";
 import { useApp } from "@/lib/store";
 import { useNow } from "@/lib/useNow";
@@ -28,6 +29,7 @@ function SectionTitle({ children, action }: { children: React.ReactNode; action?
 export default function MyPage() {
   const { plans, reviews, favorites, recent, prefs, hydrated, resetDemo, showToast } = useApp();
   const now = useNow();
+  const habits = useMemo(() => habitsFrom(plans, reviews), [plans, reviews]);
   const [resetOpen, setResetOpen] = useState(false);
 
   const today = now ? dateKey(now) : "";
@@ -59,7 +61,11 @@ export default function MyPage() {
     prefs.priorities.length > 0
       ? prefs.priorities.map((k) => PRIORITIES.find((p) => p.key === k)?.label).filter(Boolean).join(", ")
       : "없음";
-  const stayText = STAY_OPTIONS.find((s) => s.key === prefs.stay)?.label ?? "";
+  // 기록이 충분하면 점수 계산에 실제로 쓰는 값(내 평균)을 보여준다 — 두 값이 어긋나 보이지 않게
+  const stayText =
+    habits.visits >= HABIT_MIN_VISITS && habits.avgStayMin
+      ? `${formatDuration(habits.avgStayMin)} (내 기록)`
+      : STAY_OPTIONS.find((s) => s.key === prefs.stay)?.label ?? "";
 
   if (!hydrated) return <PageSkeleton />;
 
@@ -211,6 +217,52 @@ export default function MyPage() {
 
           {/* ---------- 보조 정보 ---------- */}
           <aside className="mt-10 space-y-10 lg:mt-0">
+            {/* 내 작업 패턴 — 실제 기록에서 계산하고, 어디에 쓰이는지 밝힌다 */}
+            <section>
+              <SectionTitle>내 작업 패턴</SectionTitle>
+              {habits.visits === 0 ? (
+                <p className="text-meta text-coffee-400">작업을 계획하고 체크인하면 자주 가는 지역과 보통 머무는 시간을 알려드려요.</p>
+              ) : (
+                <div className="rounded-2xl border border-cream-300/80 bg-white p-4">
+                  <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
+                    {habits.topArea && (
+                      <div>
+                        <dt className="text-caption text-coffee-400">자주 가는 지역</dt>
+                        <dd className="text-body font-semibold text-coffee-900">
+                          {AREA_MAP[habits.topArea].name} <span className="num text-meta font-normal text-coffee-400">{habits.topAreaCount}회</span>
+                        </dd>
+                      </div>
+                    )}
+                    {habits.topPurpose && (
+                      <div>
+                        <dt className="text-caption text-coffee-400">주로 하는 작업</dt>
+                        <dd className="text-body font-semibold text-coffee-900">{PURPOSE_LABEL[habits.topPurpose]}</dd>
+                      </div>
+                    )}
+                    {habits.avgStayMin && (
+                      <div>
+                        <dt className="text-caption text-coffee-400">보통 머무는 시간</dt>
+                        <dd className="num text-body font-semibold text-coffee-900">{formatDuration(habits.avgStayMin)}</dd>
+                      </div>
+                    )}
+                    {habits.likes.length > 0 && (
+                      <div>
+                        <dt className="text-caption text-coffee-400">만족했던 조건</dt>
+                        <dd className="text-body font-semibold text-coffee-900">
+                          {habits.likes.slice(0, 2).map((k) => LIKE_LABEL[k]).join(" · ")}
+                        </dd>
+                      </div>
+                    )}
+                  </dl>
+                  <p className="mt-3 border-t border-cream-200 pt-3 text-caption text-coffee-500">
+                    {habits.visits >= HABIT_MIN_VISITS
+                      ? `지도·상세의 점수가 내 평균 ${formatDuration(habits.avgStayMin ?? 120)} 머무는 기준으로 계산돼요.`
+                      : `작업 기록이 ${HABIT_MIN_VISITS}건 이상 쌓이면 점수에 내 평균 머무는 시간을 반영해요.`}
+                  </p>
+                </div>
+              )}
+            </section>
+
             <section>
               <SectionTitle
                 action={

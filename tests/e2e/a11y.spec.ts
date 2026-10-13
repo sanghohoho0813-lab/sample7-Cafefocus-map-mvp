@@ -18,7 +18,8 @@ for (const route of ROUTES) {
 
 /* 열린 상태(시트·선택)도 같은 기준으로 검사한다 */
 const STATES: { name: string; route: string; open: (page: import("@playwright/test").Page) => Promise<void> }[] = [
-  { name: "필터 시트", route: "/", open: async (p) => p.getByRole("button", { name: /^필터/ }).first().click() },
+  { name: "조건 시트", route: "/", open: async (p) => p.getByRole("button", { name: /^조건/ }).first().click() },
+  { name: "왜 이 점수인가", route: "/cafe/cafe-morrow", open: async (p) => p.getByRole("button", { name: /점인가요/ }).first().click() },
   { name: "적합도 계산 기준", route: "/", open: async (p) => p.getByRole("button", { name: /계산 기준/ }).click() },
   { name: "마커 선택", route: "/", open: async (p) => p.locator("[data-cafe-marker]").first().click() },
   { name: "비교할 카페 고르기", route: "/compare", open: async (p) => p.getByRole("button", { name: "카페 고르기" }).click() },

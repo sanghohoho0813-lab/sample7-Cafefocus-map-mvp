@@ -39,6 +39,8 @@ const KEY = {
   reviews: "cf:v2:reviews",
   prefs: "cf:v2:prefs",
   seeded: "cf:v2:seeded",
+  /** 샘플 기록 버전 — 올라가면 기존 기록은 그대로 두고 새 샘플 항목만 더한다 */
+  seedVersion: "cf:seed-version",
 } as const;
 
 const DEFAULT_PREFS: Prefs = { purpose: "focus", priorities: ["quiet", "outlet"], stay: "long" };
@@ -91,6 +93,9 @@ interface AppState {
 }
 
 const AppContext = createContext<AppState | null>(null);
+
+/** 샘플 기록 구성이 바뀔 때 올린다 (2: 두 번째 방문 추가) */
+const SEED_VERSION = 2;
 
 const uid = (prefix: string) =>
   `${prefix}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
@@ -145,11 +150,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       commitPlans(seed.plans);
       commitReviews(seed.reviews);
       write(KEY.seeded, true);
+      write(KEY.seedVersion, SEED_VERSION);
     } else {
-      const p = keepValid(read(KEY.plans, isArray, []), isPlan);
+      let p = keepValid(read(KEY.plans, isArray, []), isPlan);
+      let r = keepValid(read(KEY.reviews, isArray, []), isReview);
+      if (read(KEY.seedVersion, (v): v is number => typeof v === "number", 1) < SEED_VERSION) {
+        const seed = buildSeed(new Date());
+        p = [...p, ...seed.plans.filter((x) => !p.some((y) => y.id === x.id))];
+        r = [...r, ...seed.reviews.filter((x) => !r.some((y) => y.id === x.id))];
+        write(KEY.plans, p);
+        write(KEY.reviews, r);
+        write(KEY.seedVersion, SEED_VERSION);
+      }
       plansRef.current = p;
       setPlans(p);
-      setReviews(keepValid(read(KEY.reviews, isArray, []), isReview));
+      setReviews(r);
     }
     setHydrated(true);
   }, [commitPlans, commitReviews]);

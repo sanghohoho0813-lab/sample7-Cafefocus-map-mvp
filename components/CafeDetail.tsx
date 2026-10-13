@@ -18,27 +18,23 @@ import {
   Car,
   Bath,
   Table2,
-  Check,
-  AlertCircle,
   CalendarCheck2,
   PenLine,
-  ChevronDown,
 } from "lucide-react";
-import type { Cafe, Plan, Purpose } from "@/lib/types";
+import type { Cafe, Plan } from "@/lib/types";
 import { AREA_MAP, CAFES } from "@/lib/data/cafes";
 import {
   distanceKm,
   formatDistance,
   formatHours,
   formatStay,
-  isOpenAt,
   metricLabel,
   noiseLabel,
   outletLabel,
 } from "@/lib/scoring";
-import { calmestHour, fitCaution, fitReasons, fitScore, PURPOSES, rankByFit, verdict } from "@/lib/fit";
+import { bestHour, explainFit, rankByFit } from "@/lib/fit";
 import { dateKey, hm, relativeDate } from "@/lib/time";
-import { reviewsForCafe } from "@/lib/reviews";
+import { checkinSummary, reviewsForCafe } from "@/lib/reviews";
 import { buildExploreQuery } from "@/lib/exploreQuery";
 import { useApp } from "@/lib/store";
 import { useFitContext } from "@/lib/useFitContext";
@@ -47,86 +43,9 @@ import HourlyChart from "@/components/HourlyChart";
 import FavoriteButton from "@/components/FavoriteButton";
 import CompareToggle from "@/components/CompareToggle";
 import CafeCard from "@/components/CafeCard";
-import ScorePill from "@/components/ScorePill";
-
-/** 결론 → 이유 → 주의 (모바일 본문 · 데스크톱 스티키 패널 공용) */
-function Decision({ cafe, hour, purpose, onPurpose, picked, onResetHour, score, reasons, caution, ready }: {
-  cafe: Cafe;
-  hour: number;
-  purpose: Purpose;
-  onPurpose: (p: Purpose) => void;
-  /** 그래프에서 다른 시간을 골랐는지 */
-  picked: boolean;
-  onResetHour: () => void;
-  score: number;
-  reasons: string[];
-  caution: string | null;
-  ready: boolean;
-}) {
-  const open = isOpenAt(cafe, hour);
-  if (!ready) {
-    return (
-      <div className="space-y-3" aria-busy>
-        <div className="h-3.5 w-32 animate-pulse rounded bg-cream-200" />
-        <div className="flex items-center gap-4">
-          <div className="h-[74px] w-[72px] animate-pulse rounded-2xl bg-cream-200" />
-          <div className="h-5 flex-1 animate-pulse rounded bg-cream-200" />
-        </div>
-        <div className="h-4 w-2/3 animate-pulse rounded bg-cream-200" />
-      </div>
-    );
-  }
-  return (
-    <div>
-      {/* 기준을 이 자리에서 바로 바꿀 수 있게 — 목적 선택, 고른 시간 되돌리기 */}
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-meta text-coffee-500">
-        <span className="num font-semibold text-coffee-700">{hour}시</span>
-        <span aria-hidden>·</span>
-        <label className="relative inline-flex items-center">
-          <span className="sr-only">작업 목적</span>
-          <select
-            value={purpose}
-            onChange={(e) => onPurpose(e.target.value as Purpose)}
-            className="h-7 cursor-pointer appearance-none rounded-lg border border-cream-300 bg-white pl-2.5 pr-7 font-semibold text-coffee-800 outline-none transition-colors hover:border-coffee-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-coffee-600"
-          >
-            {PURPOSES.map((p) => (
-              <option key={p.key} value={p.key}>
-                {p.label}
-              </option>
-            ))}
-          </select>
-          <ChevronDown size={14} className="pointer-events-none absolute right-2 text-coffee-400" aria-hidden />
-        </label>
-        <span>기준</span>
-        {picked && (
-          <button type="button" onClick={onResetHour} className="ml-auto font-semibold text-coffee-700 underline underline-offset-4">
-            지금 기준으로
-          </button>
-        )}
-      </div>
-      <div className="mt-2 flex items-center gap-4">
-        <ScorePill score={score} muted={!open} size="lg" />
-        <p className="text-title text-coffee-900">{verdict(cafe, hour)}</p>
-      </div>
-      {open && reasons.length > 0 && (
-        <ul className="mt-4 space-y-2">
-          {reasons.map((r) => (
-            <li key={r} className="flex items-center gap-2 text-body text-coffee-700">
-              <Check size={17} strokeWidth={2.6} className="shrink-0 text-forest-600" />
-              {r}
-            </li>
-          ))}
-        </ul>
-      )}
-      {caution && (
-        <p className="mt-3 flex items-center gap-2 text-meta font-medium text-amber2-500">
-          <AlertCircle size={16} className="shrink-0" />
-          {caution}
-        </p>
-      )}
-    </div>
-  );
-}
+import DecisionPanel from "@/components/detail/DecisionPanel";
+import TimeCompare, { type TimeSlot } from "@/components/detail/TimeCompare";
+import CheckinSummary from "@/components/detail/CheckinSummary";
 
 function Section({ title, action, children }: { title: string; action?: React.ReactNode; children: React.ReactNode }) {
   return (
@@ -140,10 +59,15 @@ function Section({ title, action, children }: { title: string; action?: React.Re
   );
 }
 
+/**
+ * 카페 상세 — 결론 중심.
+ * 결론(갈 만한가) → 이유 → 주의 → 시간대 비교 → 작업자 체크인 → 상세 정보 → 계획.
+ * 사진 다음에 긴 설명부터 나오지 않도록, 매장 소개는 "상세 정보"로 내렸다.
+ */
 export default function CafeDetail({ cafe }: { cafe: Cafe }) {
   const router = useRouter();
   const { addRecent, plans, reviews, hydrated, setPurpose } = useApp();
-  const { purpose, hour: contextHour, now, isLive } = useFitContext();
+  const { purpose, hour: contextHour, now, isLive, timeWord: contextWord, stayMin, stayFromHistory, timeSel } = useFitContext();
   const [pickedHour, setPickedHour] = useState<number | null>(null);
   const [metric, setMetric] = useState<"crowd" | "noise">("crowd");
 
@@ -152,13 +76,29 @@ export default function CafeDetail({ cafe }: { cafe: Cafe }) {
   }, [cafe.id, addRecent]);
 
   const hour = pickedHour ?? contextHour;
-  const open = isOpenAt(cafe, hour);
-  const score = fitScore(cafe, purpose, hour);
-  const reasons = fitReasons(cafe, purpose, hour, 3);
-  const caution = fitCaution(cafe, hour);
+  const timeWord = hour === contextHour ? contextWord : `${hour}시`;
+  const ex = explainFit(cafe, purpose, hour, { stayMin, timeWord });
   const area = AREA_MAP[cafe.area];
-  // 지금 시각을 따라가는 중이면 "오늘 남은 시간 중"에서 고른다
-  const calm = calmestHour(cafe, isLive ? contextHour : undefined);
+  const ready = now !== null && hydrated;
+
+  // ---- 시간대 비교: 지금 · 내가 고른 시간 · 가장 추천 (같은 시간이면 한 칸으로) ----
+  const best = bestHour(cafe, purpose, isLive ? contextHour : undefined, stayMin);
+  const slots: TimeSlot[] = useMemo(() => {
+    const list: TimeSlot[] = [];
+    const add = (h: number | null | undefined, role: TimeSlot["roles"][number]) => {
+      if (h === null || h === undefined) return;
+      const found = list.find((s) => s.hour === h);
+      if (found) found.roles.push(role);
+      else list.push({ hour: h, roles: [role] });
+    };
+    if (isLive) add(contextHour, "now");
+    // 지도에서 고른 도착 시간 또는 그래프에서 고른 시간
+    add(pickedHour ?? (timeSel !== "now" ? contextHour : null), "picked");
+    // 새벽·심야에 "지금"으로 들어오면 가장 가까운 데이터 시간을 기준으로 비교한다
+    if (!isLive && timeSel === "now" && pickedHour === null) add(contextHour, "base");
+    add(best?.hour, "best");
+    return list.sort((a, b) => a.hour - b.hour);
+  }, [isLive, contextHour, pickedHour, timeSel, best?.hour]);
 
   /** 이 카페에 예정된 가장 가까운 작업 */
   const myPlan: Plan | null = useMemo(() => {
@@ -171,23 +111,28 @@ export default function CafeDetail({ cafe }: { cafe: Cafe }) {
     );
   }, [plans, cafe.id, now, hydrated]);
 
-  const allReviews = useMemo(() => reviewsForCafe(cafe, hydrated ? reviews : []), [cafe, reviews, hydrated]);
+  const myReviews = useMemo(() => (hydrated ? reviews : []), [hydrated, reviews]);
+  const allReviews = useMemo(() => reviewsForCafe(cafe, myReviews), [cafe, myReviews]);
+  const summary = useMemo(() => checkinSummary(cafe, myReviews), [cafe, myReviews]);
   const myReviewCount = allReviews.filter((r) => r.mine).length;
 
   const similar = useMemo(
-    () =>
-      rankByFit(
-        CAFES.filter((c) => c.area === cafe.area && c.id !== cafe.id),
-        purpose,
-        hour
-      ).slice(0, 3),
-    [cafe, purpose, hour]
+    () => rankByFit(CAFES.filter((c) => c.area === cafe.area && c.id !== cafe.id), purpose, hour, stayMin).slice(0, 3),
+    [cafe, purpose, hour, stayMin]
   );
 
-  // 이 시간이 영업 외라면 CTA는 시간 없이 계획 화면으로 보낸다
-  // 이미 예정된 작업이 있으면 주 행동은 그 일정 보기 (같은 시간으로 또 계획하면 겹침 오류만 나므로)
-  const planHref = myPlan ? `/plans/${myPlan.id}` : `/cafe/${cafe.id}/plan${open ? `?hour=${hour}` : ""}`;
-  const ctaLabel = myPlan ? "예정된 작업 보기" : open ? `${hour}시에 여기서 작업하기` : "작업 계획 세우기";
+  // 주 행동: 예정된 작업이 있으면 그 일정, 영업 중이면 지금 고른 시간, 영업 외면 가장 추천하는 시간으로
+  const planHourParam = ex.open ? hour : best?.hour;
+  const planHref = myPlan
+    ? `/plans/${myPlan.id}`
+    : `/cafe/${cafe.id}/plan${planHourParam !== undefined ? `?hour=${planHourParam}` : ""}`;
+  const ctaLabel = myPlan
+    ? "예정된 작업 보기"
+    : ex.open
+      ? `${hour}시에 여기서 작업하기`
+      : best
+        ? `${best.hour}시로 작업 계획하기`
+        : "작업 계획 세우기";
 
   const env = [
     { icon: Volume2, label: "소음", value: noiseLabel(cafe.metrics.noiseScore) },
@@ -201,18 +146,19 @@ export default function CafeDetail({ cafe }: { cafe: Cafe }) {
     { icon: Car, label: "주차", value: cafe.amenities.parking ? "가능" : "불가" },
   ];
 
-  const decision = (
-    <Decision
+  const decisionPanel = (
+    <DecisionPanel
       cafe={cafe}
+      ex={ex}
       hour={hour}
+      timeWord={timeWord}
       purpose={purpose}
       onPurpose={setPurpose}
       picked={pickedHour !== null && pickedHour !== contextHour}
       onResetHour={() => setPickedHour(null)}
-      score={score}
-      reasons={reasons}
-      caution={caution}
-      ready={now !== null && hydrated}
+      stayMin={stayMin}
+      stayFromHistory={stayFromHistory}
+      ready={ready}
     />
   );
 
@@ -243,7 +189,7 @@ export default function CafeDetail({ cafe }: { cafe: Cafe }) {
             cafe={cafe}
             variant="wide"
             priority
-            className="aspect-[16/9] w-full lg:aspect-[3.2/1] lg:rounded-3xl"
+            className="aspect-[2/1] w-full lg:aspect-[3.2/1] lg:rounded-3xl"
             sizes="(max-width: 1024px) 100vw, 1100px"
           />
           <button
@@ -256,71 +202,94 @@ export default function CafeDetail({ cafe }: { cafe: Cafe }) {
           </button>
         </div>
 
-        <div className="px-4 sm:px-6 lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-10 lg:px-0">
+        <div className="px-4 sm:px-6 lg:grid lg:grid-cols-[minmax(0,1fr)_380px] lg:gap-10 lg:px-0">
           {/* ---------- 본문 ---------- */}
           <div className="min-w-0">
-            <header className="pb-6 pt-5 lg:pt-7">
+            <header className="pb-5 pt-5 lg:pt-7">
               <h1 className="text-page text-coffee-900">{cafe.name}</h1>
-              <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-meta text-coffee-500">
+              <p className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-meta text-coffee-500">
                 <span>{area.name}</span>
                 <span aria-hidden>·</span>
                 <span className="num">
                   {cafe.station} {cafe.stationDistanceM}m
                 </span>
                 <span aria-hidden>·</span>
+                <span className="num">{formatHours(cafe)}</span>
+                <span aria-hidden>·</span>
                 <span className="flex items-center gap-1">
                   <Star size={14} className="fill-amber2-400 text-amber2-400" aria-hidden />
                   <b className="num text-coffee-800">{cafe.rating.toFixed(1)}</b>
-                  <span className="num">({cafe.reviewCount + myReviewCount})</span>
                 </span>
               </p>
-              <p className="mt-3 text-body text-coffee-600">{cafe.description}</p>
             </header>
 
-            {planBanner && <div className="mb-6 lg:hidden">{planBanner}</div>}
-
-            {/* 모바일: 결론을 본문 첫머리에 */}
-            <div className="border-t border-cream-300/70 py-6 lg:hidden">
-              {decision}
+            {/* 모바일: 결론을 사진·이름 바로 아래에 */}
+            <div className="lg:hidden">
+              {planBanner && <div className="mb-4">{planBanner}</div>}
+              <div className="rounded-2xl border border-cream-300/80 bg-white p-5" data-decision>
+                {decisionPanel}
+              </div>
             </div>
 
-            <Section
-              title="시간대별 붐빔"
-              action={
-                <div className="flex rounded-xl border border-cream-300 bg-white p-1" role="tablist" aria-label="그래프 기준">
-                  {(["crowd", "noise"] as const).map((m) => (
-                    <button
-                      key={m}
-                      type="button"
-                      role="tab"
-                      aria-selected={metric === m}
-                      onClick={() => setMetric(m)}
-                      className={`h-8 rounded-lg px-3 text-label transition-colors ${
-                        metric === m ? "bg-coffee-800 text-cream-50" : "text-coffee-500 hover:text-coffee-800"
-                      }`}
-                    >
-                      {m === "crowd" ? "혼잡도" : "소음"}
-                    </button>
-                  ))}
+            <Section title="언제 가면 좋을까">
+              {ready && (
+                <TimeCompare
+                  cafe={cafe}
+                  purpose={purpose}
+                  stayMin={stayMin}
+                  slots={slots}
+                  activeHour={hour}
+                  scope={isLive ? "오늘 남은 시간 중" : "하루 중"}
+                  onPick={(h) => setPickedHour(h)}
+                />
+              )}
+              <div className="mt-6">
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <p className="text-label text-coffee-700">시간대별 {metric === "crowd" ? "혼잡도" : "소음"}</p>
+                  <div className="flex rounded-xl border border-cream-300 bg-white p-1" role="tablist" aria-label="그래프 기준">
+                    {(["crowd", "noise"] as const).map((m) => (
+                      <button
+                        key={m}
+                        type="button"
+                        role="tab"
+                        aria-selected={metric === m}
+                        onClick={() => setMetric(m)}
+                        className={`h-8 rounded-lg px-3 text-label transition-colors ${
+                          metric === m ? "bg-coffee-800 text-cream-50" : "text-coffee-500 hover:text-coffee-800"
+                        }`}
+                      >
+                        {m === "crowd" ? "혼잡도" : "소음"}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              }
-            >
-              <HourlyChart cafe={cafe} metric={metric} selectedHour={hour} onSelect={setPickedHour} />
-              <p className="mt-4 text-meta text-coffee-500">
-                막대를 누르면 그 시간 기준으로 다시 판단해요. {isLive ? "오늘 남은 시간 중 " : ""}가장 한산한 때는{" "}
-                <button
-                  type="button"
-                  onClick={() => setPickedHour(calm)}
-                  className="num font-semibold text-coffee-800 underline underline-offset-4"
-                >
-                  {calm}시
-                </button>
-                예요.
-              </p>
+                <HourlyChart
+                  cafe={cafe}
+                  metric={metric}
+                  selectedHour={hour}
+                  onSelect={setPickedHour}
+                  nowHour={isLive ? contextHour : undefined}
+                  bestHour={best?.hour}
+                />
+                <p className="mt-3 text-caption text-coffee-400">막대를 누르면 그 시간 기준으로 위 결론을 다시 계산해요 · 데모 예측값</p>
+              </div>
             </Section>
 
-            <Section title="작업 환경">
-              <dl className="grid grid-cols-2 gap-x-6 gap-y-5 sm:grid-cols-3">
+            <Section
+              title="작업자 체크인"
+              action={
+                <Link href={`/cafe/${cafe.id}/review`} className="btn-quiet h-10 text-label">
+                  <PenLine size={16} />
+                  체크인 남기기
+                </Link>
+              }
+            >
+              <CheckinSummary summary={summary} reviews={allReviews} />
+            </Section>
+
+            <Section title="상세 정보">
+              <p className="text-body text-coffee-600">{cafe.description}</p>
+              <dl className="mt-6 grid grid-cols-2 gap-x-6 gap-y-5 sm:grid-cols-3">
                 {env.map(({ icon: Icon, label, value }) => (
                   // dl의 자식은 dt/dd를 바로 담은 div만 허용된다 — 아이콘은 dt 안의 장식으로 둔다
                   <div key={label} className="relative min-w-0 pl-8">
@@ -332,10 +301,7 @@ export default function CafeDetail({ cafe }: { cafe: Cafe }) {
                   </div>
                 ))}
               </dl>
-            </Section>
-
-            <Section title="매장 정보">
-              <ul className="space-y-3 text-body text-coffee-700">
+              <ul className="mt-6 space-y-3 text-body text-coffee-700">
                 <li className="flex items-start gap-3">
                   <MapPin size={18} className="mt-1 shrink-0 text-coffee-400" aria-hidden />
                   <span>
@@ -356,48 +322,9 @@ export default function CafeDetail({ cafe }: { cafe: Cafe }) {
                   <span className="num">매일 {formatHours(cafe)}</span>
                 </li>
               </ul>
-            </Section>
-
-            <Section
-              title="작업 후기"
-              action={
-                <Link href={`/cafe/${cafe.id}/review`} className="btn-quiet h-10 text-label">
-                  <PenLine size={16} />
-                  후기 남기기
-                </Link>
-              }
-            >
-              <div className="mb-5 flex items-center gap-4 rounded-2xl bg-white px-5 py-4">
-                <div className="flex items-center gap-1.5">
-                  <Star size={22} className="fill-amber2-400 text-amber2-400" aria-hidden />
-                  <span className="num text-section text-coffee-900">{cafe.rating.toFixed(1)}</span>
-                </div>
-                <p className="min-w-0 text-meta text-coffee-500">
-                  후기 <b className="num font-semibold text-coffee-800">{(cafe.reviewCount + myReviewCount).toLocaleString()}개</b>
-                  <span className="block truncate">방문자 키워드 · {cafe.tags.slice(0, 3).join(" · ")}</span>
-                </p>
-              </div>
-              <ul className="divide-y divide-cream-300/70">
-                {allReviews.map((r) => (
-                  <li key={r.id} className="py-4 first:pt-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-body font-semibold text-coffee-900">{r.author}</span>
-                      {r.mine && (
-                        <span className="rounded-md bg-coffee-800 px-1.5 py-0.5 text-[12px] font-semibold text-cream-50">
-                          내 후기
-                        </span>
-                      )}
-                      <span className="flex items-center gap-0.5 text-meta font-semibold text-coffee-700">
-                        <Star size={14} className="fill-amber2-400 text-amber2-400" aria-hidden />
-                        {r.rating}
-                      </span>
-                    </div>
-                    <p className="mt-0.5 text-meta text-coffee-400">{r.meta}</p>
-                    {r.text && <p className="mt-2 text-body text-coffee-700">{r.text}</p>}
-                    <p className="mt-2 text-meta text-coffee-500">{r.tags.filter(Boolean).join(" · ")}</p>
-                  </li>
-                ))}
-              </ul>
+              <p className="mt-4 text-caption text-coffee-400">
+                방문자 평점 ★{cafe.rating.toFixed(1)} · 후기 {(cafe.reviewCount + myReviewCount).toLocaleString()}개
+              </p>
             </Section>
 
             {similar.length > 0 && (
@@ -415,8 +342,8 @@ export default function CafeDetail({ cafe }: { cafe: Cafe }) {
           <aside className="hidden lg:block">
             <div className="sticky top-6 mt-7 space-y-4">
               {planBanner}
-              <div className="rounded-2xl border border-cream-300/80 bg-white p-6 shadow-card">
-                {decision}
+              <div className="rounded-2xl border border-cream-300/80 bg-white p-6 shadow-card" data-decision>
+                {decisionPanel}
                 <Link href={planHref} className="btn-primary mt-6 w-full">
                   {ctaLabel}
                   <ArrowRight size={17} />
@@ -426,7 +353,6 @@ export default function CafeDetail({ cafe }: { cafe: Cafe }) {
                   <FavoriteButton cafeId={cafe.id} />
                 </div>
               </div>
-              <p className="px-1 text-caption text-coffee-400">혼잡·소음은 데모 데이터 기반 예측값이에요.</p>
             </div>
           </aside>
         </div>

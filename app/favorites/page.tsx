@@ -11,15 +11,16 @@ import CompareToggle from "@/components/CompareToggle";
 
 export default function FavoritesPage() {
   const { favorites, compare, hydrated } = useApp();
-  const { purpose, hour, now, timeLabel } = useFitContext();
+  const { purpose, hour, now, timeLabel, stayMin } = useFitContext();
 
   const saved = rankByFit(
     CAFES.filter((c) => favorites.includes(c.id)),
     purpose,
-    hour
+    hour,
+    stayMin
   );
   const canCompare = compare.length >= 2;
-  const suggestions = saved.length === 0 ? rankByFit(CAFES, purpose, hour).slice(0, 3) : [];
+  const suggestions = saved.length === 0 ? rankByFit(CAFES, purpose, hour, stayMin).slice(0, 3) : [];
 
   return (
     <div className="flex h-full flex-col bg-cream-50">

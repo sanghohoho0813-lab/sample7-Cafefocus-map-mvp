@@ -1,7 +1,7 @@
 import type { Cafe, CafeMetrics, PriorityKey, Purpose, StayLength } from "@/lib/types";
 import { CAFES } from "@/lib/data/cafes";
 import { isOpenAt } from "@/lib/scoring";
-import { effectiveMetrics, fitReasons, PURPOSE_WEIGHTS, weighted } from "@/lib/fit";
+import { effectiveMetrics, fitReasons, PURPOSE_WEIGHTS, STAY_MINUTES, weighted } from "@/lib/fit";
 
 export const PRIORITIES: { key: PriorityKey; label: string }[] = [
   { key: "quiet", label: "조용함" },
@@ -53,7 +53,7 @@ export function recommend(input: RecommendInput, limit = 3): RecommendResult[] {
 
   return CAFES.filter((c) => isOpenAt(c, input.hour))
     .map((cafe) => {
-      let score = weighted(effectiveMetrics(cafe, input.hour), weights);
+      let score = weighted(effectiveMetrics(cafe, input.hour, STAY_MINUTES[input.stay]), weights);
 
       if (input.stay === "long") {
         score += Math.round((cafe.metrics.stayScore - 70) / 8);
@@ -67,7 +67,7 @@ export function recommend(input: RecommendInput, limit = 3): RecommendResult[] {
 
       score = Math.max(0, Math.min(100, score));
 
-      const reasons = fitReasons(cafe, input.purpose, input.hour, 3);
+      const reasons = fitReasons(cafe, input.purpose, input.hour, 3, { stayMin: STAY_MINUTES[input.stay] });
       if (input.priorities.includes("access") && cafe.stationDistanceM <= 300 && reasons.length < 3) {
         reasons.push(`${cafe.station} ${cafe.stationDistanceM}m`);
       }

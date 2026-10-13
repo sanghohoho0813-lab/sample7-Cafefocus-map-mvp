@@ -54,7 +54,7 @@ const AREA_LABELS: Record<AreaKey | "all", { name: string; x: number; y: number 
   ],
 };
 
-function project(cafes: Cafe[]) {
+function project(cafes: Cafe[], yMax = 64, yMin = 14) {
   const lats = cafes.map((c) => c.lat);
   const lngs = cafes.map((c) => c.lng);
   let minLat = Math.min(...lats);
@@ -70,7 +70,7 @@ function project(cafes: Cafe[]) {
   return (lat: number, lng: number) => ({
     // 마커가 컨트롤·모바일 Bottom Sheet에 가려지지 않게 안쪽 영역에 배치
     x: 12 + ((lng - minLng) / (maxLng - minLng)) * 76,
-    y: 14 + ((maxLat - lat) / (maxLat - minLat)) * 50,
+    y: yMin + ((maxLat - lat) / (maxLat - minLat)) * (yMax - yMin),
   });
 }
 
@@ -84,6 +84,8 @@ function separateMarkers(
   minX: number,
   minY: number,
   maxX = 85,
+  maxY = 64,
+  minY0 = 16,
   iterations = 160
 ) {
   const pts = points.map((p) => ({ ...p }));
@@ -113,7 +115,7 @@ function separateMarkers(
   // 상단 배너·줌 컨트롤·Bottom Sheet에 가리지 않는 영역으로 클램프
   return pts.map((p) => ({
     x: Math.min(Math.max(p.x, 8), maxX),
-    y: Math.min(Math.max(p.y, 16), 64),
+    y: Math.min(Math.max(p.y, minY0), maxY),
   }));
 }
 
@@ -143,6 +145,8 @@ export default function MapView({
   area,
   purposeLabel,
   onLegendClick,
+  upcoming,
+  bottomInset = 0,
   children,
 }: {
   cafes: Cafe[];
@@ -160,6 +164,10 @@ export default function MapView({
   purposeLabel: string;
   /** 범례를 누르면 계산 기준을 보여준다 */
   onLegendClick?: () => void;
+  /** 다가오는 내 작업 — 지도 위에 바로 보이고, 누르면 그 카페를 고른다 */
+  upcoming?: { cafeId: string; label: string } | null;
+  /** 모바일에서 바텀시트가 덮는 아래쪽 높이(px) — 마커를 그 위에 둔다 */
+  bottomInset?: number;
   children?: React.ReactNode;
 }) {
   const [zi, setZi] = useState(0);
@@ -167,7 +175,7 @@ export default function MapView({
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [dragging, setDragging] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [size, setSize] = useState({ w: 0, h: 0 });
+  const [size, setSize] = useState({ w: 0, h: 0, narrow: false });
   const drag = useRef<{ id: number; sx: number; sy: number; px: number; py: number; moved: boolean } | null>(null);
   const swallowClick = useRef(false);
   const wheelAcc = useRef(0);
@@ -175,7 +183,8 @@ export default function MapView({
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
-    const measure = () => setSize({ w: el.clientWidth, h: el.clientHeight });
+    // narrow: 모바일 레이아웃(바텀시트가 지도 아래를 덮는다) — 지도 폭이 아니라 화면 폭으로 판단
+    const measure = () => setSize({ w: el.clientWidth, h: el.clientHeight, narrow: window.innerWidth < 1024 });
     measure();
     const ro = new ResizeObserver(measure);
     ro.observe(el);
@@ -216,9 +225,17 @@ export default function MapView({
 
   const lastArea = useRef(area);
 
+  // 모바일은 바텀시트가 덮는 아래쪽을 피해, 보이는 영역 안에 마커를 펼친다
+  const yMax = useMemo(() => {
+    if (!size.narrow || !bottomInset || !size.h) return 64;
+    return Math.min(64, Math.max(40, 100 - ((bottomInset + MARKER_H + 12) / size.h) * 100));
+  }, [size.narrow, size.h, bottomInset]);
+
+  // 위쪽에 '다음 작업' 칩이 떠 있으면 그 아래부터 마커를 둔다
+  const yMin = upcoming ? 24 : 14;
   const proj = useMemo(
-    () => project(cafes.length ? cafes : [{ lat: DEMO_LOCATION.lat, lng: DEMO_LOCATION.lng } as Cafe]),
-    [cafes]
+    () => project(cafes.length ? cafes : [{ lat: DEMO_LOCATION.lat, lng: DEMO_LOCATION.lng } as Cafe], yMax, yMin),
+    [cafes, yMax, yMin]
   );
 
   // 마커 실제 크기를 "확대된" 지도 대비 %로 환산해 간격을 정한다.
@@ -233,26 +250,33 @@ export default function MapView({
     // 오른쪽 줌 버튼(약 64px)에 마커가 가리지 않게 — 좁은 화면일수록 % 여유가 커야 한다
     const baseW = size.w || 720;
     const maxX = Math.min(85, 100 - ((64 + MARKER_W / 2) / baseW) * 100);
-    const sep = separateMarkers(stable.map((c) => proj(c.lat, c.lng)), minX, minY, maxX);
+    const sep = separateMarkers(stable.map((c) => proj(c.lat, c.lng)), minX, minY, maxX, yMax, yMin + 2);
     const byId = new Map(stable.map((c, i) => [c.id, sep[i]]));
     return cafes.map((c) => byId.get(c.id)!);
-  }, [cafes, proj, size.w, size.h, zoom]);
+  }, [cafes, proj, size.w, size.h, zoom, yMax, yMin]);
 
-  // 검색 등으로 고른 카페가 화면 밖이면 보이는 곳으로 지도를 옮긴다
+  // 고른 카페가 화면 밖(또는 바텀시트 아래)이면 보이는 곳으로 지도를 옮긴다.
+  // 주소로 바로 열린 경우처럼 지도가 아직 크기를 재기 전이면, 잰 뒤에 한 번 처리한다.
+  const focusPending = useRef<string | null>(null);
   useEffect(() => {
-    // 지역을 함께 바꾼 선택(검색)은 위에서 처음 상태로 돌아가 모두 보이므로 옮기지 않는다
-    if (!selectedId || !size.w || lastArea.current !== area) return;
-    const idx = cafes.findIndex((c) => c.id === selectedId);
+    focusPending.current = selectedId;
+  }, [selectedId]);
+  useEffect(() => {
+    const id = focusPending.current;
+    if (!id || !size.w || lastArea.current !== area) return;
+    const idx = cafes.findIndex((c) => c.id === id);
     if (idx < 0) return;
+    focusPending.current = null;
     const pos = positions[idx];
     const sx = size.w / 2 + ((pos.x - 50) / 100) * size.w * zoom + pan.x;
     const sy = size.h / 2 + ((pos.y - 50) / 100) * size.h * zoom + pan.y;
-    const inView = sx > 48 && sx < size.w - 64 && sy > 56 && sy < size.h * 0.62;
+    const visibleBottom = size.narrow && bottomInset ? size.h - bottomInset - 16 : size.h * 0.85;
+    const inView = sx > 48 && sx < size.w - 64 && sy - MARKER_H > 56 && sy < visibleBottom;
     if (inView) return;
-    setPan(clampPan(pan.x + (size.w / 2 - sx), pan.y + (size.h * 0.38 - sy), zoom));
-    // 선택이 바뀔 때만 확인한다 (드래그 중 다시 끌어오지 않도록)
+    setPan(clampPan(pan.x + (size.w / 2 - sx), pan.y + ((56 + visibleBottom) / 2 - sy), zoom));
+    // 선택이 바뀔 때·처음 잴 때만 확인한다 (드래그 중 다시 끌어오지 않도록)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedId]);
+  }, [selectedId, size.w, positions]);
 
   // 지역이 바뀌면 투영이 새로 계산되므로 확대·이동도 처음으로 (선택 효과보다 뒤에 둔다)
   useEffect(() => {
@@ -385,11 +409,16 @@ export default function MapView({
           const selected = cafe.id === selectedId;
           const hovered = cafe.id === hoveredId;
           const named = selected || hovered;
+          // 하나를 고르면 나머지는 한 발 물러나 시선이 선택한 곳에 머문다
+          const dimmed = selectedId !== null && !selected && !hovered;
 
           // 색은 의미가 있을 때만: 매우 적합(초록) · 영업 외(흐림) · 선택(진함)
           const tone = named
             ? "border-coffee-900 bg-coffee-900 text-white"
-            : !open
+            : dimmed
+              ? // 투명도 대신 차분한 색으로 한 발 물러난다 (글자 대비는 유지)
+                "border-cream-300 bg-cream-100 text-coffee-500"
+              : !open
               ? "border-cream-300 bg-cream-100 text-coffee-400"
               : score >= 85
                 ? "border-forest-600 bg-forest-600 text-white"
@@ -453,6 +482,19 @@ export default function MapView({
         </span>
         <Info size={14} className="text-coffee-400" aria-hidden />
       </button>
+
+      {upcoming && (
+        <button
+          type="button"
+          data-map-ui
+          onClick={() => onSelect(upcoming.cafeId)}
+          className="absolute left-3 top-[52px] z-20 flex h-8 max-w-[calc(100%-5rem)] items-center gap-1.5 rounded-full bg-coffee-900/95 px-3 text-caption font-semibold text-cream-50 shadow-card transition-colors hover:bg-coffee-900"
+          aria-label={`다음 작업: ${upcoming.label}. 지도에서 보기`}
+        >
+          <CalendarCheck2 size={14} className="shrink-0" aria-hidden />
+          <span className="truncate">{upcoming.label}</span>
+        </button>
+      )}
 
       {/* 줌 컨트롤 */}
       <div
