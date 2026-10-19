@@ -17,6 +17,17 @@ import Sheet from "@/components/Sheet";
 import PageSkeleton from "@/components/PageSkeleton";
 import SampleBridgeCTA from "@/components/SampleBridgeCTA";
 
+/** 기록 상태 — 색은 의미가 있을 때만 (완료: 초록, 기록 전: 주의, 취소: 흐림) */
+function StatusPill({ status }: { status: "completed" | "cancelled" | "overdue" | "planned" }) {
+  const map = {
+    completed: { label: "완료", cls: "bg-forest-50 text-forest-700" },
+    cancelled: { label: "취소", cls: "bg-cream-200 text-coffee-500" },
+    overdue: { label: "기록 전", cls: "bg-amber2-50 text-amber2-600" },
+    planned: { label: "예정", cls: "bg-cream-200 text-coffee-700" },
+  }[status];
+  return <span className={`shrink-0 rounded-md px-1.5 py-0.5 text-[12px] font-semibold leading-tight ${map.cls}`}>{map.label}</span>;
+}
+
 function SectionTitle({ children, action }: { children: React.ReactNode; action?: React.ReactNode }) {
   return (
     <div className="mb-3 flex items-center justify-between gap-3">
@@ -74,7 +85,7 @@ export default function MyPage() {
       <div className="mx-auto max-w-5xl px-4 pb-14 pt-6 sm:px-6 lg:pt-8">
         <header>
           <h1 className="text-page text-coffee-900">내 작업</h1>
-          <dl className="mt-5 grid grid-cols-3 divide-x divide-cream-300 rounded-2xl border border-cream-300/80 bg-white py-4">
+          <dl className="mt-5 grid grid-cols-3 divide-x divide-cream-200 rounded-[20px] bg-white py-4 shadow-card ring-1 ring-cream-300/60">
             {stats.map((s) => (
               <div key={s.label} className="px-3 text-center sm:px-5">
                 <dt className="text-meta text-coffee-400">{s.label}</dt>
@@ -111,31 +122,70 @@ export default function MyPage() {
                   </Link>
                 </div>
               ) : (
-                <ul className="divide-y divide-cream-200 overflow-hidden rounded-2xl border border-cream-300/80 bg-white">
-                  {upcoming.map((p) => {
+                <div className="space-y-3">
+                  {/* 가장 가까운 작업은 크게 — 오늘 할 일이 가장 먼저 보이게 */}
+                  {(() => {
+                    const p = upcoming[0];
                     const cafe = CAFE_MAP[p.cafeId];
                     return (
-                      <li key={p.id} className="flex items-center gap-3 p-4">
-                        <Link href={`/plans/${p.id}`} className="flex min-w-0 flex-1 items-center gap-3.5">
-                          <CafePhoto cafe={cafe} className="h-14 w-14 shrink-0 rounded-xl" sizes="56px" overlay={false} />
-                          <span className="min-w-0">
-                            <span className="num block text-meta font-bold text-coffee-800">
+                      <div className="overflow-hidden rounded-[24px] bg-coffee-800 text-cream-50 shadow-card-lg">
+                        <Link href={`/plans/${p.id}`} className="group flex items-center gap-4 p-5">
+                          <CafePhoto cafe={cafe} className="h-[76px] w-[76px] shrink-0 rounded-2xl" sizes="76px" overlay={false} />
+                          <span className="min-w-0 flex-1">
+                            <span className="flex items-center gap-1.5 text-caption font-semibold text-cream-100/80">
+                              <CalendarCheck2 size={14} aria-hidden />
+                              다음 작업
+                            </span>
+                            <span className="num mt-0.5 block text-title text-white">
                               {relativeDate(p.date, now)} · {timeRange(p.startHour, p.durationMin)}
                             </span>
-                            <span className="block truncate text-title text-coffee-900">{cafe.name}</span>
-                            <span className="block truncate text-meta text-coffee-400">
+                            <span className="block truncate text-body font-semibold text-cream-50">{cafe.name}</span>
+                            <span className="block truncate text-meta text-cream-100/80">
                               {PURPOSE_LABEL[p.purpose]}
                               {p.memo ? ` · ${p.memo}` : ""}
                             </span>
                           </span>
+                          <ChevronRight size={20} className="shrink-0 text-cream-100/70 transition-transform group-hover:translate-x-0.5" aria-hidden />
                         </Link>
-                        <Link href={`/cafe/${cafe.id}/review?plan=${p.id}`} className="btn-secondary h-10 shrink-0 px-3 text-label">
-                          기록하기
-                        </Link>
-                      </li>
+                        <div className="flex gap-2 border-t border-white/10 px-5 py-3">
+                          <Link href={`/cafe/${cafe.id}`} className="btn h-10 flex-1 rounded-xl bg-white/10 px-3 text-label text-cream-50 hover:bg-white/15">
+                            카페 정보
+                          </Link>
+                          <Link href={`/cafe/${cafe.id}/review?plan=${p.id}`} className="btn h-10 flex-1 rounded-xl bg-cream-50 px-3 text-label text-coffee-900 hover:bg-white">
+                            기록하기
+                          </Link>
+                        </div>
+                      </div>
                     );
-                  })}
-                </ul>
+                  })()}
+                  {upcoming.length > 1 && (
+                    <ul className="divide-y divide-cream-200 overflow-hidden rounded-[20px] bg-white shadow-card ring-1 ring-cream-300/60">
+                      {upcoming.slice(1).map((p) => {
+                        const cafe = CAFE_MAP[p.cafeId];
+                        return (
+                          <li key={p.id} className="flex items-center gap-3 p-4">
+                            <Link href={`/plans/${p.id}`} className="flex min-w-0 flex-1 items-center gap-3.5">
+                              <CafePhoto cafe={cafe} className="h-14 w-14 shrink-0 rounded-xl" sizes="56px" overlay={false} />
+                              <span className="min-w-0">
+                                <span className="num block text-meta font-bold text-coffee-800">
+                                  {relativeDate(p.date, now)} · {timeRange(p.startHour, p.durationMin)}
+                                </span>
+                                <span className="block truncate text-title text-coffee-900">{cafe.name}</span>
+                                <span className="block truncate text-meta text-coffee-400">
+                                  {PURPOSE_LABEL[p.purpose]}
+                                  {p.memo ? ` · ${p.memo}` : ""}
+                                </span>
+                              </span>
+                            </Link>
+                            <Link href={`/cafe/${cafe.id}/review?plan=${p.id}`} className="btn-secondary h-10 shrink-0 px-3 text-label">
+                              기록하기
+                            </Link>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </div>
               )}
             </section>
 
@@ -145,20 +195,24 @@ export default function MyPage() {
               {past.length === 0 ? (
                 <p className="text-meta text-coffee-400">작업을 마치고 기록하면 여기에 쌓여요.</p>
               ) : (
-                <ul className="divide-y divide-cream-200 overflow-hidden rounded-2xl border border-cream-300/80 bg-white">
+                <ul className="divide-y divide-cream-200 overflow-hidden rounded-[20px] bg-white shadow-card ring-1 ring-cream-300/60">
                   {past.map((p) => {
                     const cafe = CAFE_MAP[p.cafeId];
                     const review = p.reviewId ? reviews.find((r) => r.id === p.reviewId) : undefined;
                     const overdue = p.status === "planned";
                     return (
                       <li key={p.id}>
-                        <Link href={`/plans/${p.id}`} className="flex items-center gap-3 p-4 transition-colors hover:bg-cream-50">
+                        <Link href={`/plans/${p.id}`} className="flex items-center gap-3.5 p-4 transition-colors hover:bg-cream-50">
+                          <CafePhoto cafe={cafe} className="h-14 w-14 shrink-0 self-start rounded-xl" sizes="56px" overlay={false} />
                           <span className="min-w-0 flex-1">
-                            <span className="num block text-meta text-coffee-400">
+                            <span className="num block truncate text-meta text-coffee-400">
                               {formatDate(p.date)} · {timeRange(p.startHour, p.durationMin)}
                             </span>
-                            <span className="block truncate text-title text-coffee-900">{cafe.name}</span>
-                            <span className={`block truncate text-meta ${overdue ? "font-semibold text-amber2-500" : "text-coffee-500"}`}>
+                            <span className="flex min-w-0 items-center gap-2">
+                              <span className="truncate text-title text-coffee-900">{cafe.name}</span>
+                              <StatusPill status={p.status === "planned" ? "overdue" : p.status} />
+                            </span>
+                            <span className={`block truncate text-meta ${overdue ? "font-semibold text-amber2-600" : "text-coffee-500"}`}>
                               {p.status === "cancelled"
                                 ? "취소한 계획"
                                 : overdue
@@ -192,7 +246,7 @@ export default function MyPage() {
                 <SectionTitle>
                   카페에 남긴 후기 <span className="num text-coffee-400">{standaloneReviews.length}</span>
                 </SectionTitle>
-                <ul className="divide-y divide-cream-200 overflow-hidden rounded-2xl border border-cream-300/80 bg-white">
+                <ul className="divide-y divide-cream-200 overflow-hidden rounded-[20px] bg-white shadow-card ring-1 ring-cream-300/60">
                   {standaloneReviews.slice(0, 5).map((r) => (
                     <li key={r.id}>
                       <Link href={`/cafe/${r.cafeId}`} className="block p-4 transition-colors hover:bg-cream-50">
@@ -223,7 +277,7 @@ export default function MyPage() {
               {habits.visits === 0 ? (
                 <p className="text-meta text-coffee-400">작업을 계획하고 체크인하면 자주 가는 지역과 보통 머무는 시간을 알려드려요.</p>
               ) : (
-                <div className="rounded-2xl border border-cream-300/80 bg-white p-4">
+                <div className="rounded-[20px] bg-white p-4 shadow-card ring-1 ring-cream-300/60">
                   <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
                     {habits.topArea && (
                       <div>

@@ -3,11 +3,11 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
-import { ArrowLeft, CheckCircle2, CalendarX2, AlertCircle, Star, Clock3, CalendarCheck2, Check } from "lucide-react";
-import { CAFE_MAP } from "@/lib/data/cafes";
+import { ArrowLeft, CheckCircle2, CalendarX2, AlertCircle, Star, Clock3, CalendarCheck2, Check, MapPin } from "lucide-react";
+import { AREA_MAP, CAFE_MAP } from "@/lib/data/cafes";
 import { bestHour, explainFit, PURPOSE_LABEL } from "@/lib/fit";
 import { buildExploreQuery } from "@/lib/exploreQuery";
-import { dateKey, dateWithRelative, formatDate, formatDuration, timeRange } from "@/lib/time";
+import { dateKey, formatDate, formatDuration, hm, relativeDate, timeRange } from "@/lib/time";
 import { reviewSummaryTags } from "@/lib/reviews";
 import { useApp } from "@/lib/store";
 import { useNow } from "@/lib/useNow";
@@ -71,13 +71,28 @@ export default function PlanView() {
   )}`;
 
   const header = isNew
-    ? { icon: CheckCircle2, tone: "text-forest-600", title: "작업 계획을 저장했어요", sub: "내 작업에서 언제든 다시 볼 수 있어요." }
+    ? { icon: CheckCircle2, tone: "bg-forest-50 text-forest-600", title: "작업 계획을 저장했어요", sub: "내 작업에서 언제든 다시 볼 수 있어요." }
     : plan.status === "completed"
-      ? { icon: CheckCircle2, tone: "text-forest-600", title: "작업을 마쳤어요", sub: "남겨주신 체크인은 카페 후기에 반영됐어요." }
+      ? { icon: CheckCircle2, tone: "bg-forest-50 text-forest-600", title: "작업을 마쳤어요", sub: "남겨주신 체크인은 카페 후기에 반영됐어요." }
       : plan.status === "cancelled"
-        ? { icon: CalendarX2, tone: "text-coffee-400", title: "취소한 계획이에요", sub: "같은 카페로 다시 계획할 수 있어요." }
-        : { icon: CalendarCheck2, tone: "text-coffee-700", title: "작업 예정", sub: "작업을 마치면 환경 체크인을 남겨주세요." };
+        ? { icon: CalendarX2, tone: "bg-cream-200 text-coffee-400", title: "취소한 계획이에요", sub: "같은 카페로 다시 계획할 수 있어요." }
+        : { icon: CalendarCheck2, tone: "bg-cream-200 text-coffee-700", title: "작업 예정", sub: "작업을 마치면 환경 체크인을 남겨주세요." };
   const HeaderIcon = header.icon;
+
+  // 진행 단계: 계획 → 작업 → 체크인 (취소한 계획은 단계 대신 상태만)
+  const done = plan.status === "completed";
+  // "오늘 / 10월 13일 (화)"처럼 상대 표기가 있을 때만 두 줄로 — 같은 날짜를 두 번 쓰지 않는다
+  const dayRel = relativeDate(plan.date, now);
+  const dayFull = formatDate(plan.date);
+  const steps = [
+    { label: "계획 저장", sub: "완료", state: "done" as const },
+    {
+      label: "작업",
+      sub: done ? "완료" : `${relativeDate(plan.date, now)} ${hm(plan.startHour)}`,
+      state: done ? ("done" as const) : ("current" as const),
+    },
+    { label: "체크인", sub: done ? "완료" : "작업 후", state: done ? ("done" as const) : ("todo" as const) },
+  ];
 
   const doCancel = () => {
     cancelPlan(plan.id);
@@ -101,31 +116,91 @@ export default function PlanView() {
       <div className="mx-auto max-w-2xl px-4 pb-12 pt-8 sm:px-6">
         {/* ---------- 결론 ---------- */}
         <div className="text-center">
-          <HeaderIcon size={44} strokeWidth={1.8} className={`mx-auto ${header.tone}`} />
-          <h1 className="mt-3 text-page text-coffee-900">{header.title}</h1>
+          <span className={`mx-auto flex h-16 w-16 items-center justify-center rounded-full animate-check-in ${header.tone}`}>
+            <HeaderIcon size={34} strokeWidth={2} aria-hidden />
+          </span>
+          <h1 className="mt-4 text-page text-coffee-900">{header.title}</h1>
           <p className="mt-1.5 text-body text-coffee-500">{header.sub}</p>
         </div>
 
-        {/* ---------- 일정 ---------- */}
-        <article className={`mt-8 overflow-hidden rounded-2xl border border-cream-300/80 bg-white ${plan.status === "cancelled" ? "opacity-70" : ""}`}>
-          <div className="flex gap-4 p-5">
-            <CafePhoto cafe={cafe} className="h-20 w-20 shrink-0 rounded-xl" sizes="80px" overlay={false} />
-            <div className="min-w-0 flex-1">
-              <Link href={`/cafe/${cafe.id}`} className="text-title text-coffee-900 underline-offset-4 hover:underline">
-                {cafe.name}
-              </Link>
-              <p className="num mt-1 text-body font-semibold text-coffee-800">
-                {dateWithRelative(plan.date, now)}
+        {/* ---------- 일정: 티켓처럼 한 장에 ---------- */}
+        <article
+          className={`mt-8 overflow-hidden rounded-[24px] bg-white shadow-card ring-1 ring-cream-300/70 ${plan.status === "cancelled" ? "opacity-75" : ""}`}
+        >
+          <Link href={`/cafe/${cafe.id}`} className="group relative block" aria-label={`${cafe.name} 카페 정보 보기`}>
+            <CafePhoto cafe={cafe} variant="wide" className="aspect-[2.6/1] w-full" sizes="(max-width: 672px) 100vw, 672px" overlay={false} />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/15 to-transparent" aria-hidden />
+            <div className="absolute inset-x-0 bottom-0 px-5 pb-4 text-white">
+              <p className="flex items-center gap-1 text-caption font-semibold text-white/85">
+                <MapPin size={13} aria-hidden />
+                {AREA_MAP[cafe.area].name} · {cafe.station}
               </p>
-              <p className="num text-meta text-coffee-500">
-                {timeRange(plan.startHour, plan.durationMin)} ({formatDuration(plan.durationMin)}) · {PURPOSE_LABEL[plan.purpose]}
-              </p>
-              {plan.memo && <p className="mt-1.5 text-meta text-coffee-600">“{plan.memo}”</p>}
+              <p className="text-[22px] font-extrabold leading-tight tracking-[-0.02em] underline-offset-4 group-hover:underline">{cafe.name}</p>
             </div>
+          </Link>
+
+          <div className="grid grid-cols-2 gap-4 px-5 pb-5 pt-4">
+            <div>
+              <p className="text-caption text-coffee-400">날짜</p>
+              <p className="num mt-0.5 text-title text-coffee-900">{dayRel}</p>
+              {dayRel !== dayFull && <p className="num text-meta text-coffee-500">{dayFull}</p>}
+            </div>
+            <div>
+              <p className="text-caption text-coffee-400">시간</p>
+              <p className="num mt-0.5 text-title text-coffee-900">{timeRange(plan.startHour, plan.durationMin)}</p>
+              <p className="num text-meta text-coffee-500">
+                {formatDuration(plan.durationMin)} · {PURPOSE_LABEL[plan.purpose]}
+              </p>
+            </div>
+            {plan.memo && (
+              <p className="col-span-2 rounded-xl bg-cream-100 px-3.5 py-2.5 text-meta text-coffee-700">
+                <span className="font-semibold text-coffee-500">할 일 · </span>
+                {plan.memo}
+              </p>
+            )}
           </div>
 
+          {/* 티켓 절취선 */}
+          <div className="relative h-5" aria-hidden>
+            <span className="absolute -left-2.5 top-0 h-5 w-5 rounded-full bg-cream-50 ring-1 ring-inset ring-cream-300/70" />
+            <span className="absolute -right-2.5 top-0 h-5 w-5 rounded-full bg-cream-50 ring-1 ring-inset ring-cream-300/70" />
+            <span className="absolute inset-x-5 top-1/2 border-t-2 border-dashed border-cream-200" />
+          </div>
+
+          {plan.status !== "cancelled" && (
+            <ol className="flex items-start px-5 pb-1 pt-3" aria-label="진행 단계">
+              {steps.map((st, i) => (
+                <li key={st.label} className="relative flex flex-1 flex-col items-center text-center">
+                  {i > 0 && (
+                    <span
+                      className={`absolute right-1/2 top-[11px] h-0.5 w-full -translate-x-3 ${st.state === "todo" ? "bg-cream-200" : "bg-forest-500"}`}
+                      aria-hidden
+                    />
+                  )}
+                  <span
+                    className={`relative z-[1] flex h-6 w-6 items-center justify-center rounded-full ${
+                      st.state === "done"
+                        ? "bg-forest-600 text-white"
+                        : st.state === "current"
+                          ? "bg-white text-coffee-800 ring-2 ring-coffee-800"
+                          : "bg-cream-200 text-coffee-400"
+                    }`}
+                    aria-hidden
+                  >
+                    {st.state === "done" ? <Check size={14} strokeWidth={3} /> : <span className="h-2 w-2 rounded-full bg-current" />}
+                  </span>
+                  <span className={`mt-1.5 text-caption font-semibold ${st.state === "todo" ? "text-coffee-400" : "text-coffee-800"}`}>
+                    {st.label}
+                  </span>
+                  <span className="num text-[12px] text-coffee-400">{st.sub}</span>
+                  <span className="sr-only">{st.state === "done" ? "완료" : st.state === "current" ? "진행 전" : "남음"}</span>
+                </li>
+              ))}
+            </ol>
+          )}
+
           {plan.status === "planned" && (
-            <div className="space-y-2.5 border-t border-cream-200 bg-cream-50/60 px-5 py-4">
+            <div className="mx-5 mb-5 mt-4 space-y-2.5 rounded-2xl bg-cream-50 px-4 py-3.5">
               <p className="text-label text-coffee-500">도착 전에 알아두세요</p>
               <div className="flex items-center gap-3">
                 <ScorePill score={ex.score} />
@@ -134,7 +209,7 @@ export default function PlanView() {
                 </p>
               </div>
               {ex.cons.map((c) => (
-                <p key={c} className="flex items-center gap-2 text-meta font-medium text-amber2-500">
+                <p key={c} className="flex items-center gap-2 text-meta font-medium text-amber2-600">
                   <AlertCircle size={15} className="shrink-0" />
                   {c}
                 </p>
@@ -152,7 +227,7 @@ export default function PlanView() {
           )}
 
           {plan.status === "completed" && review && (
-            <div className="border-t border-cream-200 px-5 py-4">
+            <div className="mx-5 mb-5 mt-4 rounded-2xl bg-cream-50 px-4 py-3.5">
               <p className="flex items-center gap-1.5 text-body font-semibold text-coffee-800">
                 <Star size={16} className="fill-amber2-400 text-amber2-400" aria-hidden />
                 <span className="num">{review.rating}.0</span>
@@ -162,6 +237,8 @@ export default function PlanView() {
               {review.text && <p className="mt-2 text-body text-coffee-700">{review.text}</p>}
             </div>
           )}
+
+          {plan.status === "cancelled" && <div className="h-3" aria-hidden />}
         </article>
 
         {/* ---------- 다음 행동: 상태별 주 행동 하나 ---------- */}

@@ -7,23 +7,25 @@ import { useMemo } from "react";
  * viewBox 1000x700, preserveAspectRatio="slice" 로 컨테이너를 채운다.
  */
 
+/* 실제 지도 앱의 라이트 스타일처럼 바탕은 낮은 대비로 물러나고, 도로·물·녹지만 또렷하게.
+   마커(점수 알약)가 지도 위에서 가장 먼저 읽히도록 바탕 블록과 건물 대비를 낮췄다. */
 const C = {
-  land: "#F3EEE2",
-  block: "#EDE6D6",
-  building: "#E2D9C6",
-  buildingEdge: "#D6CAB2",
-  park: "#D8E4C6",
-  parkEdge: "#C7D8B0",
-  water: "#C2D9E8",
-  waterEdge: "#AFCCDE",
-  casing: "#E0D5BE",
+  land: "#F2EFE9",
+  block: "#ECE8E0",
+  building: "#E3DDD2",
+  buildingEdge: "#DAD3C6",
+  park: "#D6E6CB",
+  parkEdge: "#C8DCB9",
+  water: "#BCD7EA",
+  waterEdge: "#A8CBE2",
+  casing: "#E1DACD",
   road: "#FFFFFF",
-  highway: "#FBEBC6",
-  highwayEdge: "#E9D6A6",
-  label: "#A2957B",
-  roadLabel: "#B3A78C",
-  line2: "#3D8A5F",
-  line3: "#CF8A3C",
+  highway: "#FCEBC0",
+  highwayEdge: "#EDD49B",
+  label: "#9C927F",
+  roadLabel: "#A89D88",
+  line2: "#3F8E62",
+  line3: "#D08B3E",
 };
 
 /** 간선도로 좌표 (블록 경계와 일치) */
@@ -87,7 +89,7 @@ function buildBuildings(blocks: ReturnType<typeof buildBlocks>) {
     const ch = b.h / rows;
     for (let i = 0; i < cols; i++) {
       for (let j = 0; j < rows; j++) {
-        if (rnd() < 0.28) continue; // 빈 필지
+        if (rnd() < 0.36) continue; // 빈 필지
         const pw = cw * (0.45 + rnd() * 0.36);
         const ph = ch * (0.45 + rnd() * 0.36);
         const px = b.x + i * cw + (cw - pw) * rnd();
@@ -123,16 +125,16 @@ export default function MapCanvas() {
             y={b.y}
             width={b.w}
             height={b.h}
-            rx="6"
+            rx="8"
             fill={b.park ? C.park : C.block}
             stroke={b.park ? C.parkEdge : "none"}
             strokeWidth={b.park ? 1.5 : 0}
           />
         ))}
       </g>
-      <g fill={C.building} stroke={C.buildingEdge} strokeWidth="0.8">
+      <g fill={C.building} stroke={C.buildingEdge} strokeWidth="0.5">
         {buildings.map((p) => (
-          <rect key={p.id} x={p.x} y={p.y} width={p.w} height={p.h} rx="1.5" />
+          <rect key={p.id} x={p.x} y={p.y} width={p.w} height={p.h} rx="2" />
         ))}
       </g>
 
@@ -193,6 +195,12 @@ export default function MapCanvas() {
         ))}
       </g>
 
+      {/* 사선 대로 — 격자만 있는 '게임 맵' 느낌을 덜고 실제 도시처럼 */}
+      <g fill="none" strokeLinecap="round">
+        <path d="M 250 520 C 360 430, 470 360, 610 300 S 860 170, 1020 120" stroke={C.casing} strokeWidth="17" />
+        <path d="M 250 520 C 360 430, 470 360, 610 300 S 860 170, 1020 120" stroke={C.road} strokeWidth="12" />
+      </g>
+
       {/* 강변 고속화도로 (하천 양안) */}
       <g fill="none" strokeLinecap="round">
         <path
@@ -243,21 +251,25 @@ export default function MapCanvas() {
         ))}
       </g>
 
-      {/* ---- 지하철 노선 ---- */}
+      {/* ---- 지하철 노선 (흰 테두리로 도로 위에서도 또렷하게) ---- */}
+      <g fill="none" strokeLinecap="round" stroke="#FFFFFF" strokeWidth="8.5" opacity="0.9">
+        <path d="M -20 300 C 180 292, 330 236, 520 232 C 700 228, 860 268, 1020 244" />
+        <path d="M 120 -20 C 150 140, 250 300, 420 420 C 560 518, 700 620, 780 720" />
+      </g>
       <g fill="none" strokeLinecap="round">
         {/* 2호선 */}
         <path
           d="M -20 300 C 180 292, 330 236, 520 232 C 700 228, 860 268, 1020 244"
           stroke={C.line2}
-          strokeWidth="5"
-          opacity="0.85"
+          strokeWidth="4.5"
+          opacity="0.9"
         />
         {/* 3호선 */}
         <path
           d="M 120 -20 C 150 140, 250 300, 420 420 C 560 518, 700 620, 780 720"
           stroke={C.line3}
-          strokeWidth="5"
-          opacity="0.85"
+          strokeWidth="4.5"
+          opacity="0.9"
         />
       </g>
       {/* 역 */}
@@ -290,12 +302,12 @@ export default function MapCanvas() {
         textAnchor="middle"
         style={{ fontFamily: "inherit" }}
       >
-        <text x={640} y={RIVER_TOP + 74} fill="#7FA8C0" fontSize="19">
+        <text x={640} y={RIVER_TOP + 74} fill="#6E9BB8" fontSize="19" letterSpacing="4">
           한강
         </text>
       </g>
       <g
-        fill="#8FA877"
+        fill="#7E9C68"
         fontSize="15"
         fontWeight="600"
         textAnchor="middle"

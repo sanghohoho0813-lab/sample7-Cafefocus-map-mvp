@@ -9,10 +9,13 @@ export default function CompareToggle({
   cafeId,
   compact = false,
   quiet = false,
+  onImage = false,
   className = "",
 }: {
   cafeId: string;
   compact?: boolean;
+  /** 사진 위에 올리는 아이콘 버튼 (상세 사진 위) */
+  onImage?: boolean;
   /** 결과가 화면에 바로 보이는 곳(저장 목록의 비교 바)에서는 알림을 띄우지 않는다 */
   quiet?: boolean;
   className?: string;
@@ -33,6 +36,23 @@ export default function CompareToggle({
       showToast(`비교함에서 뺐어요 · ${name}`);
     }
   };
+
+  if (onImage) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full shadow-card transition-colors duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${
+          active ? "bg-coffee-800 text-cream-50" : "bg-white/90 text-coffee-700 hover:bg-white"
+        } ${className}`}
+        aria-pressed={active}
+        aria-label={active ? "비교함에서 빼기" : "비교함에 담기"}
+        title={active ? "비교함에서 빼기" : "비교함에 담기"}
+      >
+        {active ? <Check size={17} strokeWidth={2.6} /> : <Scale size={17} />}
+      </button>
+    );
+  }
 
   if (compact) {
     return (

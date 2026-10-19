@@ -295,7 +295,7 @@ export default function MapView({
   return (
     <div
       ref={containerRef}
-      className={`relative h-full w-full touch-none select-none overflow-hidden bg-[#F3EEE2] ${
+      className={`relative h-full w-full touch-none select-none overflow-hidden bg-[#F2EFE9] ${
         dragging ? "cursor-grabbing" : "cursor-grab"
       }`}
       role="region"
@@ -422,7 +422,7 @@ export default function MapView({
               ? "border-cream-300 bg-cream-100 text-coffee-400"
               : score >= 85
                 ? "border-forest-600 bg-forest-600 text-white"
-                : "border-coffee-200 bg-white text-coffee-800";
+                : "border-white bg-white text-coffee-900";
 
           return (
             <button
@@ -469,7 +469,7 @@ export default function MapView({
         type="button"
         data-map-ui
         onClick={onLegendClick}
-        className="absolute left-3 top-3 z-20 flex h-8 items-center gap-2 rounded-full bg-white/95 px-3 text-caption font-medium text-coffee-600 shadow-card transition-colors hover:bg-white hover:text-coffee-800"
+        className="absolute left-3 top-3 z-20 flex h-8 items-center gap-2 rounded-full bg-white/95 px-3 text-caption font-medium text-coffee-600 shadow-float backdrop-blur transition-colors hover:bg-white hover:text-coffee-800"
         aria-label={`지도 숫자는 ${purposeLabel} 적합도예요. 계산 기준 보기`}
       >
         <span>
@@ -488,7 +488,7 @@ export default function MapView({
           type="button"
           data-map-ui
           onClick={() => onSelect(upcoming.cafeId)}
-          className="absolute left-3 top-[52px] z-20 flex h-8 max-w-[calc(100%-5rem)] items-center gap-1.5 rounded-full bg-coffee-900/95 px-3 text-caption font-semibold text-cream-50 shadow-card transition-colors hover:bg-coffee-900"
+          className="absolute left-3 top-[52px] z-20 flex h-8 max-w-[calc(100%-5rem)] items-center gap-1.5 rounded-full bg-coffee-900/95 px-3 text-caption font-semibold text-cream-50 shadow-float transition-colors hover:bg-coffee-900"
           aria-label={`다음 작업: ${upcoming.label}. 지도에서 보기`}
         >
           <CalendarCheck2 size={14} className="shrink-0" aria-hidden />
@@ -499,7 +499,7 @@ export default function MapView({
       {/* 줌 컨트롤 */}
       <div
         data-map-ui
-        className="absolute right-3 top-1/2 z-30 flex -translate-y-1/2 cursor-default flex-col overflow-hidden rounded-xl border border-cream-300 bg-white shadow-card"
+        className="absolute right-3 top-1/2 z-30 flex -translate-y-1/2 cursor-default flex-col overflow-hidden rounded-2xl bg-white shadow-float"
       >
         <button
           type="button"
@@ -536,7 +536,7 @@ export default function MapView({
 
       {/* 방위 */}
       <div
-        className="pointer-events-none absolute right-3 top-3 z-20 flex h-9 w-9 flex-col items-center justify-center rounded-full border border-cream-300 bg-white/95"
+        className="pointer-events-none absolute right-3 top-3 z-20 flex h-9 w-9 flex-col items-center justify-center rounded-full bg-white/95 shadow-float"
         aria-hidden
       >
         <span className="text-[10px] font-bold leading-none text-coffee-700">N</span>

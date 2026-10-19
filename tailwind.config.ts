@@ -58,8 +58,11 @@ const config: Config = {
           cyan: "#00E4FC",
         },
         amber2: {
+          50: "#FBF3E2",
           400: "#D9A441",
           500: "#C4902F",
+          // 주의 문구 글자색: 흰색·cream 배경에서 4.5:1 이상 (500은 아이콘·장식용)
+          600: "#9A660C",
         },
       },
       fontFamily: {
@@ -90,16 +93,20 @@ const config: Config = {
         label: ["14px", { lineHeight: "1.3", fontWeight: "600" }], // 칩·배지
         body: ["16px", { lineHeight: "1.6" }], // 본문
         btn: ["16px", { lineHeight: "1.25", fontWeight: "600" }], // 버튼
-        title: ["18px", { lineHeight: "1.35", fontWeight: "700" }], // 카드·리스트 제목
-        section: ["21px", { lineHeight: "1.35", fontWeight: "700" }], // 섹션 제목
-        page: ["26px", { lineHeight: "1.3", fontWeight: "700" }], // 페이지 제목
-        score: ["30px", { lineHeight: "1", fontWeight: "800" }], // 적합도 숫자
+        // 제목은 한글이 성기지 않도록 자간을 살짝 좁힌다 (크기가 클수록 더)
+        title: ["18px", { lineHeight: "1.35", fontWeight: "700", letterSpacing: "-0.01em" }], // 카드·리스트 제목
+        section: ["21px", { lineHeight: "1.35", fontWeight: "700", letterSpacing: "-0.018em" }], // 섹션 제목
+        page: ["26px", { lineHeight: "1.3", fontWeight: "700", letterSpacing: "-0.025em" }], // 페이지 제목
+        display: ["30px", { lineHeight: "1.22", fontWeight: "800", letterSpacing: "-0.03em" }], // 상세·완료 화면 대표 제목
+        score: ["30px", { lineHeight: "1", fontWeight: "800", letterSpacing: "-0.02em" }], // 적합도 숫자
       },
       /* Shadow 토큰 3단계 + 지도 마커 전용 */
       boxShadow: {
         card: "0 1px 2px rgba(60, 45, 30, 0.05), 0 2px 10px rgba(60, 45, 30, 0.05)",
         "card-lg": "0 2px 6px rgba(60, 45, 30, 0.08), 0 12px 32px rgba(60, 45, 30, 0.12)",
         sheet: "0 -8px 32px rgba(60, 45, 30, 0.14)",
+        /* 사진 위에 떠 있는 버튼 · 지도 위 카드 */
+        float: "0 1px 2px rgba(44, 32, 21, 0.10), 0 6px 18px rgba(44, 32, 21, 0.16)",
         marker: "0 2px 4px rgba(44, 32, 21, 0.28)",
       },
       keyframes: {
@@ -142,6 +149,12 @@ const config: Config = {
           "0%": { transform: "translateY(100%)" },
           "100%": { transform: "translateY(0)" },
         },
+        /* 완료 화면의 체크 표시 — 한 번 또렷하게 */
+        "check-in": {
+          "0%": { transform: "scale(0.6)", opacity: "0" },
+          "60%": { transform: "scale(1.08)", opacity: "1" },
+          "100%": { transform: "scale(1)", opacity: "1" },
+        },
       },
       animation: {
         "fade-up": "fade-up 0.3s ease-out both",
@@ -152,6 +165,7 @@ const config: Config = {
         "toast-in": "toast-in 0.25s ease-out both",
         "cta-sweep": "cta-sweep 6s ease-in-out infinite",
         "sheet-up": "sheet-up 0.22s ease-out both",
+        "check-in": "check-in 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both",
       },
     },
   },

@@ -21,11 +21,15 @@ const NOISE_PHRASE = { quiet: "조용한 편이에요", normal: "소음은 보�
 
 function Step({ n, title, hint, children }: { n: number; title: string; hint?: string; children: React.ReactNode }) {
   return (
-    <fieldset className="border-t border-cream-300/70 py-6">
+    // 모바일은 단계 사이를 두꺼운 띠로 — 한 번에 한 가지만 고르는 흐름이 눈에 보이게
+    <fieldset className="-mx-4 border-t-[10px] border-cream-100 px-4 py-6 sm:-mx-6 sm:px-6 lg:mx-0 lg:border-t lg:border-cream-300/70 lg:px-0">
       {/* legend 하나로 시각 제목과 접근성 이름을 함께 제공 (중복 렌더링 없음) */}
-      <legend className="mb-3.5 float-left w-full">
-        <span className="flex items-baseline gap-2.5">
-          <span className="num text-label text-coffee-400" aria-hidden>
+      <legend className="float-left mb-4 w-full">
+        <span className="flex items-center gap-2.5">
+          <span
+            className="num flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-coffee-800 text-[12px] font-bold text-cream-50"
+            aria-hidden
+          >
             {n}
           </span>
           <span className="text-title text-coffee-900">{title}</span>
@@ -146,7 +150,7 @@ export default function PlanForm({ cafe }: { cafe: Cafe }) {
   };
 
   return (
-    <form onSubmit={submit} className="flex h-full flex-col bg-cream-50" noValidate>
+    <form onSubmit={submit} className="flex h-full flex-col bg-white lg:bg-cream-50" noValidate>
       {/* ---------- 헤더 ---------- */}
       <div className="flex h-14 shrink-0 items-center gap-2 border-b border-cream-300/70 bg-white px-2 lg:px-6">
         {/* 온 곳(상세·비교·추천)으로 돌아간다. 새 탭으로 바로 들어왔으면 카페 상세로 */}
@@ -162,16 +166,19 @@ export default function PlanForm({ cafe }: { cafe: Cafe }) {
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-5xl px-4 pb-10 sm:px-6 lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-10 lg:pt-4">
+        <div className="mx-auto max-w-5xl px-4 pb-24 sm:px-6 lg:pb-10 lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-10 lg:pt-4">
           <div className="min-w-0">
             {/* 카페 요약 */}
-            <div className="flex items-center gap-3.5 py-5">
-              <CafePhoto cafe={cafe} className="h-14 w-14 shrink-0 rounded-xl" sizes="56px" overlay={false} />
-              <div className="min-w-0">
-                <p className="truncate text-title text-coffee-900">{cafe.name}</p>
-                <p className="num truncate text-meta text-coffee-400">
-                  {AREA_MAP[cafe.area].name} · 매일 {formatHours(cafe)}
-                </p>
+            <div className="py-4 lg:py-5">
+              <div className="flex items-center gap-3.5 rounded-2xl bg-cream-50 p-3 ring-1 ring-cream-300/60 lg:bg-white">
+                <CafePhoto cafe={cafe} className="h-16 w-16 shrink-0 rounded-xl" sizes="64px" overlay={false} />
+                <div className="min-w-0">
+                  <p className="text-caption font-semibold text-coffee-500">여기서 작업해요</p>
+                  <p className="truncate text-title text-coffee-900">{cafe.name}</p>
+                  <p className="num truncate text-meta text-coffee-400">
+                    {AREA_MAP[cafe.area].name} · 매일 {formatHours(cafe)}
+                  </p>
+                </div>
               </div>
             </div>
 
@@ -267,7 +274,7 @@ export default function PlanForm({ cafe }: { cafe: Cafe }) {
                 <p className="num mt-2 text-meta text-coffee-500">
                   {timeRange(startHour, durationMin)} ·{" "}
                   {maxDurationFor(cafe, startHour) < DURATION_OPTIONS[DURATION_OPTIONS.length - 1] ? (
-                    <b className="font-semibold text-amber2-500">
+                    <b className="font-semibold text-amber2-600">
                       {cafe.close === 24 ? "자정" : `${cafe.close}시`} 마감이라 최대 {formatDuration(maxDurationFor(cafe, startHour))}
                     </b>
                   ) : (
@@ -309,7 +316,7 @@ export default function PlanForm({ cafe }: { cafe: Cafe }) {
 
           {/* ---------- 요약 · 저장 ---------- */}
           <aside className="lg:pt-5">
-            <div className="rounded-2xl border border-cream-300/80 bg-white p-5 lg:sticky lg:top-4">
+            <div className="rounded-[20px] bg-white p-5 shadow-card ring-1 ring-cream-300/60 lg:sticky lg:top-4">
               <h2 className="text-title text-coffee-900">계획 요약</h2>
               {input && summary && date ? (
                 <div className="mt-3 space-y-3">
@@ -325,7 +332,7 @@ export default function PlanForm({ cafe }: { cafe: Cafe }) {
                     </p>
                   </div>
                   {summary.caution ? (
-                    <p className="flex items-center gap-1.5 text-meta font-medium text-amber2-500">
+                    <p className="flex items-center gap-1.5 text-meta font-medium text-amber2-600">
                       <AlertCircle size={15} className="shrink-0" aria-hidden />
                       {summary.caution}
                     </p>

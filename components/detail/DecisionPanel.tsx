@@ -7,7 +7,7 @@ import { decision, PURPOSES, verdict, type FitExplanation } from "@/lib/fit";
 import { formatDuration } from "@/lib/time";
 import ScorePill from "@/components/ScorePill";
 
-const TONE = { go: "text-forest-600", ok: "text-coffee-900", wait: "text-amber2-500", closed: "text-coffee-500" } as const;
+const TONE = { go: "text-forest-600", ok: "text-coffee-900", wait: "text-amber2-600", closed: "text-coffee-500" } as const;
 
 const level = (v: number) => (v >= 75 ? "좋음" : v >= 60 ? "보통" : "아쉬움");
 
@@ -110,7 +110,7 @@ export default function DecisionPanel({
               </li>
             ))}
           {ex.cons.map((c) => (
-            <li key={c} className="flex items-center gap-2 text-body font-medium text-amber2-500">
+            <li key={c} className="flex items-center gap-2 text-body font-medium text-amber2-600">
               <AlertCircle size={17} className="shrink-0" aria-hidden />
               {c}
             </li>
@@ -147,7 +147,7 @@ export default function DecisionPanel({
           ))}
           {ex.stayAdjust !== 0 && ex.stayNote && (
             <p className="flex items-start gap-2 border-t border-cream-300 pt-2.5 text-meta text-coffee-700">
-              <span className={`num font-bold ${ex.stayAdjust > 0 ? "text-forest-600" : "text-amber2-500"}`}>
+              <span className={`num font-bold ${ex.stayAdjust > 0 ? "text-forest-600" : "text-amber2-600"}`}>
                 {ex.stayAdjust > 0 ? "+" : "−"}
                 {Math.abs(ex.stayAdjust)}
               </span>

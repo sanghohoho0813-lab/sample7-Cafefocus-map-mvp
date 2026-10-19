@@ -47,9 +47,10 @@ import DecisionPanel from "@/components/detail/DecisionPanel";
 import TimeCompare, { type TimeSlot } from "@/components/detail/TimeCompare";
 import CheckinSummary from "@/components/detail/CheckinSummary";
 
+/** 모바일은 섹션 사이를 두꺼운 띠로 나눠(국내 상용 앱의 리듬) 한 화면에 한 주제씩, 데스크톱은 얇은 선 */
 function Section({ title, action, children }: { title: string; action?: React.ReactNode; children: React.ReactNode }) {
   return (
-    <section className="border-t border-cream-300/70 py-7">
+    <section className="border-t-[10px] border-cream-100 px-4 py-7 sm:px-6 lg:border-t lg:border-cream-300/70 lg:px-0">
       <div className="mb-4 flex items-center justify-between gap-3">
         <h2 className="text-section text-coffee-900">{title}</h2>
         {action}
@@ -180,53 +181,78 @@ export default function CafeDetail({ cafe }: { cafe: Cafe }) {
     </div>
   );
 
+  const metaLine = (
+    <>
+      <span className="flex items-center gap-1">
+        <Star size={14} className="fill-amber2-400 text-amber2-400" aria-hidden />
+        <b className="num font-semibold">{cafe.rating.toFixed(1)}</b>
+        <span className="num opacity-80">({(cafe.reviewCount + myReviewCount).toLocaleString()})</span>
+      </span>
+      <span aria-hidden>·</span>
+      <span className="num">{formatHours(cafe)}</span>
+      <span aria-hidden>·</span>
+      <span className="num">{formatDistance(distanceKm(cafe.lat, cafe.lng))}</span>
+    </>
+  );
+
   return (
-    <div className="h-full overflow-y-auto bg-cream-50">
+    <div className="h-full overflow-y-auto bg-white lg:bg-cream-50">
       <div className="mx-auto max-w-6xl pb-32 lg:px-8 lg:pb-16 lg:pt-6">
-        {/* ---------- 사진 ---------- */}
+        {/* ---------- 사진: 공간이 먼저 보이게 크게 ---------- */}
         <div className="relative">
           <CafePhoto
             cafe={cafe}
             variant="wide"
             priority
-            className="aspect-[2/1] w-full lg:aspect-[3.2/1] lg:rounded-3xl"
+            overlay={false}
+            className="aspect-[4/3] w-full sm:aspect-[16/9] lg:aspect-[3/1] lg:rounded-[28px]"
             sizes="(max-width: 1024px) 100vw, 1100px"
           />
-          <button
-            type="button"
-            onClick={() => (window.history.length > 1 ? router.back() : router.push("/"))}
-            className="absolute left-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-coffee-800 shadow-card transition-colors hover:bg-white"
-            aria-label="뒤로 가기"
-          >
-            <ArrowLeft size={19} />
-          </button>
+          {/* 위: 버튼 가독성 · 아래: 데스크톱 제목 가독성 */}
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/30 to-transparent lg:rounded-t-[28px]" aria-hidden />
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 hidden h-2/3 rounded-b-[28px] bg-gradient-to-t from-black/70 via-black/25 to-transparent lg:block" aria-hidden />
+          <div className="absolute inset-x-0 top-0 flex items-center justify-between p-4 lg:p-5">
+            <button
+              type="button"
+              onClick={() => (window.history.length > 1 ? router.back() : router.push("/"))}
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-coffee-800 shadow-card transition-colors hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+              aria-label="뒤로 가기"
+            >
+              <ArrowLeft size={19} />
+            </button>
+            <div className="flex items-center gap-2 lg:hidden">
+              <CompareToggle cafeId={cafe.id} onImage />
+              <FavoriteButton cafeId={cafe.id} onImage />
+            </div>
+          </div>
+          {/* 데스크톱: 이름을 사진 위에 — 잡지처럼 공간과 이름을 한 번에 */}
+          <div className="absolute inset-x-0 bottom-0 hidden px-9 pb-8 text-white lg:block">
+            <p className="text-meta font-semibold text-white/85">
+              {area.name} · <span className="num">{cafe.station} {cafe.stationDistanceM}m</span>
+            </p>
+            <h1 className="mt-1 text-[38px] font-extrabold leading-tight tracking-[-0.03em]">{cafe.name}</h1>
+            <p className="mt-2 flex flex-wrap items-center gap-x-2 text-meta text-white/90 [&_.fill-amber2-400]:fill-amber2-400">
+              {metaLine}
+            </p>
+          </div>
         </div>
 
-        <div className="px-4 sm:px-6 lg:grid lg:grid-cols-[minmax(0,1fr)_380px] lg:gap-10 lg:px-0">
+        {/* 모바일: 사진 위로 살짝 겹쳐 올라오는 본문 */}
+        <div className="relative -mt-6 rounded-t-[28px] bg-white pt-6 lg:mt-0 lg:grid lg:grid-cols-[minmax(0,1fr)_380px] lg:gap-10 lg:rounded-none lg:bg-transparent lg:pt-0">
           {/* ---------- 본문 ---------- */}
-          <div className="min-w-0">
-            <header className="pb-5 pt-5 lg:pt-7">
-              <h1 className="text-page text-coffee-900">{cafe.name}</h1>
-              <p className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-meta text-coffee-500">
-                <span>{area.name}</span>
-                <span aria-hidden>·</span>
-                <span className="num">
-                  {cafe.station} {cafe.stationDistanceM}m
-                </span>
-                <span aria-hidden>·</span>
-                <span className="num">{formatHours(cafe)}</span>
-                <span aria-hidden>·</span>
-                <span className="flex items-center gap-1">
-                  <Star size={14} className="fill-amber2-400 text-amber2-400" aria-hidden />
-                  <b className="num text-coffee-800">{cafe.rating.toFixed(1)}</b>
-                </span>
+          <div className="min-w-0 lg:pt-2 lg:[&>section:first-of-type]:border-t-0">
+            <header className="px-4 pb-5 sm:px-6 lg:hidden">
+              <p className="text-meta font-semibold text-coffee-500">
+                {area.name} · <span className="num">{cafe.station} {cafe.stationDistanceM}m</span>
               </p>
+              <h1 className="mt-1 text-display text-coffee-900">{cafe.name}</h1>
+              <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-meta text-coffee-600">{metaLine}</p>
             </header>
 
-            {/* 모바일: 결론을 사진·이름 바로 아래에 */}
-            <div className="lg:hidden">
+            {/* 모바일: 결론을 이름 바로 아래에 */}
+            <div className="px-4 pb-7 sm:px-6 lg:hidden">
               {planBanner && <div className="mb-4">{planBanner}</div>}
-              <div className="rounded-2xl border border-cream-300/80 bg-white p-5" data-decision>
+              <div className="rounded-2xl border border-cream-300/70 bg-white p-5 shadow-card" data-decision>
                 {decisionPanel}
               </div>
             </div>
@@ -289,15 +315,17 @@ export default function CafeDetail({ cafe }: { cafe: Cafe }) {
 
             <Section title="상세 정보">
               <p className="text-body text-coffee-600">{cafe.description}</p>
-              <dl className="mt-6 grid grid-cols-2 gap-x-6 gap-y-5 sm:grid-cols-3">
+              <dl className="mt-6 grid grid-cols-2 gap-x-4 gap-y-4 sm:grid-cols-3">
                 {env.map(({ icon: Icon, label, value }) => (
                   // dl의 자식은 dt/dd를 바로 담은 div만 허용된다 — 아이콘은 dt 안의 장식으로 둔다
-                  <div key={label} className="relative min-w-0 pl-8">
-                    <dt className="text-meta text-coffee-400">
-                      <Icon size={19} className="absolute left-0 top-0.5 text-coffee-400" aria-hidden />
+                  <div key={label} className="relative min-w-0 pl-12">
+                    <dt className="text-caption text-coffee-400">
+                      <span className="absolute left-0 top-0 flex h-9 w-9 items-center justify-center rounded-xl bg-cream-100 text-coffee-600" aria-hidden>
+                        <Icon size={18} />
+                      </span>
                       {label}
                     </dt>
-                    <dd className="text-body font-semibold text-coffee-800">{value}</dd>
+                    <dd className="truncate text-meta font-semibold text-coffee-800">{value}</dd>
                   </div>
                 ))}
               </dl>
@@ -329,9 +357,12 @@ export default function CafeDetail({ cafe }: { cafe: Cafe }) {
 
             {similar.length > 0 && (
               <Section title={`${area.name}의 다른 작업 카페`}>
-                <div className="space-y-2.5">
+                {/* 모바일은 옆으로 넘기는 사진 카드, 데스크톱은 3열 */}
+                <div className="no-scrollbar -mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-pl-4 px-4 pb-1 sm:-mx-6 sm:px-6 lg:mx-0 lg:grid lg:grid-cols-3 lg:overflow-visible lg:px-0">
                   {similar.map(({ cafe: c }) => (
-                    <CafeCard key={c.id} cafe={c} purpose={purpose} hour={hour} now={now} />
+                    <div key={c.id} className="w-[236px] shrink-0 snap-start lg:w-auto">
+                      <CafeCard cafe={c} variant="tile" purpose={purpose} hour={hour} now={now} />
+                    </div>
                   ))}
                 </div>
               </Section>
@@ -360,11 +391,15 @@ export default function CafeDetail({ cafe }: { cafe: Cafe }) {
 
       {/* ---------- 모바일: 하단 고정 CTA ---------- */}
       <div data-bottom-bar className="fixed inset-x-0 bottom-0 z-40 border-t border-cream-300/70 bg-white/95 px-4 pb-[max(12px,env(safe-area-inset-bottom))] pt-3 backdrop-blur lg:hidden">
-        <div className="mx-auto flex max-w-xl items-center gap-2">
-          <FavoriteButton cafeId={cafe.id} />
-          <CompareToggle cafeId={cafe.id} compact />
-          <Link href={planHref} className="btn-primary flex-1">
-            {ctaLabel}
+        <div className="mx-auto max-w-xl">
+          {/* 행동과 그 결과(점수)를 한 버튼에 — 무엇을 누르는지 다시 확인하지 않아도 되게 */}
+          <Link href={planHref} className="btn-primary h-[52px] w-full justify-between rounded-2xl pl-5 pr-3">
+            <span className="truncate">{ctaLabel}</span>
+            {!myPlan && ex.open ? (
+              <span className="num shrink-0 rounded-lg bg-white/15 px-2 py-1 text-label">{ex.score}점</span>
+            ) : (
+              <ArrowRight size={18} className="mr-1 shrink-0" />
+            )}
           </Link>
         </div>
       </div>

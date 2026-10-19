@@ -72,7 +72,7 @@ export default function Sheet({
 
   return createPortal(
     <div className="fixed inset-0 z-[80] flex items-end justify-center lg:items-center">
-      <div className="absolute inset-0 bg-coffee-900/40 animate-fade-in" onClick={onClose} aria-hidden />
+      <div className="absolute inset-0 bg-coffee-900/45 backdrop-blur-[2px] animate-fade-in" onClick={onClose} aria-hidden />
       <div
         ref={panelRef}
         role="dialog"
@@ -81,7 +81,9 @@ export default function Sheet({
         tabIndex={-1}
         className="relative flex max-h-[88dvh] w-full max-w-lg flex-col rounded-t-3xl bg-white shadow-sheet outline-none animate-sheet-up lg:rounded-3xl lg:animate-fade-up"
       >
-        <div className="flex items-start justify-between gap-4 px-5 pb-3 pt-5">
+        {/* 모바일: 아래에서 올라온 시트임을 알리는 손잡이 (장식) */}
+        <span className="mx-auto mt-2.5 h-1 w-10 shrink-0 rounded-full bg-cream-300 lg:hidden" aria-hidden />
+        <div className="flex items-start justify-between gap-4 px-5 pb-3 pt-3 lg:pt-5">
           <div>
             <h2 id={titleId} className="text-section text-coffee-900">
               {title}

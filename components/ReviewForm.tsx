@@ -22,7 +22,7 @@ const RATING_WORD = ["", "거의 못 했어요", "아쉬웠어요", "할 만했�
 
 function Group({ title, optional = false, children }: { title: string; optional?: boolean; children: React.ReactNode }) {
   return (
-    <fieldset className="border-t border-cream-300/70 py-6">
+    <fieldset className="-mx-4 border-t-[10px] border-cream-100 px-4 py-6 sm:-mx-6 sm:px-6">
       {/* float + clear 로 legend가 테두리 선 위에 걸치지 않게 (계획 폼과 같은 구조) */}
       <legend className="float-left mb-3.5 w-full">
         <span className="flex items-baseline gap-2">
@@ -150,7 +150,7 @@ export default function ReviewForm({ cafe }: { cafe: Cafe }) {
   };
 
   return (
-    <form onSubmit={submit} className="flex h-full flex-col bg-cream-50" noValidate>
+    <form onSubmit={submit} className="flex h-full flex-col bg-white" noValidate>
       <div className="flex h-14 shrink-0 items-center gap-2 border-b border-cream-300/70 bg-white px-2 lg:px-6">
         <button
           type="button"
@@ -166,17 +166,20 @@ export default function ReviewForm({ cafe }: { cafe: Cafe }) {
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-xl px-4 pb-10 sm:px-6">
-          <div className="flex items-center gap-3.5 py-5">
-            <CafePhoto cafe={cafe} className="h-14 w-14 shrink-0 rounded-xl" sizes="56px" overlay={false} />
-            <div className="min-w-0">
-              <p className="truncate text-title text-coffee-900">{cafe.name}</p>
-              <p className="num truncate text-meta text-coffee-400">
-                {plan
-                  ? `${formatDate(plan.date)} ${timeRange(plan.startHour, plan.durationMin)}`
-                  : "다음에 올 작업자에게 실제 작업 환경을 알려주세요"}
-              </p>
-              {plan?.memo && <p className="mt-0.5 truncate text-meta font-semibold text-coffee-700">할 일 · {plan.memo}</p>}
+        <div className="mx-auto max-w-xl px-4 pb-24 sm:px-6">
+          <div className="py-4">
+            <div className="flex items-center gap-3.5 rounded-2xl bg-cream-50 p-3 ring-1 ring-cream-300/60">
+              <CafePhoto cafe={cafe} className="h-16 w-16 shrink-0 rounded-xl" sizes="64px" overlay={false} />
+              <div className="min-w-0">
+                <p className="text-caption font-semibold text-coffee-500">{plan ? "다녀온 작업" : "체크인할 카페"}</p>
+                <p className="truncate text-title text-coffee-900">{cafe.name}</p>
+                <p className="num truncate text-meta text-coffee-400">
+                  {plan
+                    ? `${formatDate(plan.date)} ${timeRange(plan.startHour, plan.durationMin)}`
+                    : "다음에 올 작업자에게 실제 작업 환경을 알려주세요"}
+                </p>
+                {plan?.memo && <p className="mt-0.5 truncate text-meta font-semibold text-coffee-700">할 일 · {plan.memo}</p>}
+              </div>
             </div>
           </div>
 
@@ -218,7 +221,7 @@ export default function ReviewForm({ cafe }: { cafe: Cafe }) {
 
           {/* 계획 없이 남기는 후기만 방문 정보가 필요하다 — 기본값이 있으니 접어 둔다 */}
           {!plan && (
-            <div className="border-t border-cream-300/70 py-5">
+            <div className="-mx-4 border-t-[10px] border-cream-100 px-4 py-5 sm:-mx-6 sm:px-6">
               <button
                 type="button"
                 onClick={() => setMoreOpen((v) => !v)}

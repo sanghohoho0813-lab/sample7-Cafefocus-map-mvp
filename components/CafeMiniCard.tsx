@@ -12,7 +12,7 @@ import FavoriteButton from "@/components/FavoriteButton";
 import ScorePill from "@/components/ScorePill";
 import { ReasonList, openText } from "@/components/CafeCard";
 
-const TONE = { go: "text-forest-600", ok: "text-coffee-800", wait: "text-amber2-500", closed: "text-coffee-400" } as const;
+const TONE = { go: "text-forest-600", ok: "text-coffee-800", wait: "text-amber2-600", closed: "text-coffee-400" } as const;
 
 /** 지도에서 마커를 고르면 뜨는 미리보기 (데스크톱) — 결론 · 이유 · 주의 · 다음 행동까지 한 장에 */
 export default function CafeMiniCard({
@@ -63,7 +63,7 @@ export default function CafeMiniCard({
         </div>
         {ex.open && <ReasonList items={ex.pros} max={3} />}
         {ex.cons[0] && (
-          <p className="flex items-center gap-1.5 text-meta font-medium text-amber2-500">
+          <p className="flex items-center gap-1.5 text-meta font-medium text-amber2-600">
             <AlertCircle size={15} className="shrink-0" aria-hidden />
             {ex.cons[0]}
           </p>

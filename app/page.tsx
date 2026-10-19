@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { History, Info, List, Map as MapIcon, RotateCcw } from "lucide-react";
 import type { CafeMetrics, Plan } from "@/lib/types";
 import { AREA_MAP, CAFES, CAFE_MAP } from "@/lib/data/cafes";
@@ -242,6 +242,44 @@ export default function HomePage() {
   // 접힘 상태에서는 고른 카페, 없으면 가장 잘 맞는 곳을 바로 보여준다
   const peek = selected ?? pick ?? cafes[0] ?? null;
 
+  /* ---- 모바일: 지도 아래 가로 카드 ↔ 마커 ----
+     마커를 누르면 그 카드로 넘어가고, 카드를 옆으로 넘기면 그 카페의 마커가 선택된다. */
+  const slideRef = useRef<HTMLDivElement>(null);
+  const slideAuto = useRef(false);
+  const slideTimer = useRef<number | undefined>(undefined);
+  const activeSlide = selectedId ?? cafes[0]?.id ?? null;
+  useEffect(() => {
+    const el = slideRef.current;
+    if (!el || sheet !== "collapsed" || !activeSlide) return;
+    const card = el.querySelector<HTMLElement>(`[data-slide-id="${activeSlide}"]`);
+    if (!card) return;
+    const target = card.offsetLeft - parseFloat(getComputedStyle(el).paddingLeft || "0");
+    if (Math.abs(el.scrollLeft - target) < 4) return;
+    slideAuto.current = true;
+    el.scrollTo({ left: target, behavior: "smooth" });
+    window.clearTimeout(slideTimer.current);
+    slideTimer.current = window.setTimeout(() => (slideAuto.current = false), 500);
+  }, [activeSlide, sheet, ready, cafes.length]);
+  useEffect(() => () => window.clearTimeout(slideTimer.current), []);
+
+  const onSlideScroll = () => {
+    const el = slideRef.current;
+    if (!el) return;
+    window.clearTimeout(slideTimer.current);
+    slideTimer.current = window.setTimeout(() => {
+      if (slideAuto.current) {
+        slideAuto.current = false;
+        return;
+      }
+      const first = el.querySelector<HTMLElement>("[data-slide-id]");
+      if (!first) return;
+      const step = first.offsetWidth + parseFloat(getComputedStyle(el).columnGap || "0");
+      const idx = Math.min(Math.max(Math.round(el.scrollLeft / step), 0), cafes.length - 1);
+      const id = cafes[idx]?.id;
+      if (id && id !== activeSlide) setSelectedId(id);
+    }, 140);
+  };
+
   return (
     <div className="flex h-full flex-col">
       <ExploreControls
@@ -298,12 +336,29 @@ export default function HomePage() {
             ) : ranked.length === 0 ? (
               empty
             ) : sheet === "collapsed" && peek ? (
-              // 접힘: 고른 곳(또는 가장 잘 맞는 곳) 하나만 — 제목이 이미 "좋은 곳"이라 라벨은 생략
-              peek.id === pick?.id && !selected ? (
-                <CafeCard cafe={peek} variant="pick" purpose={purpose} hour={hour} now={now} plan={planByCafe[peek.id]} hideLabel />
-              ) : (
-                card(peek, false)
-              )
+              // 접힘: 순위대로 옆으로 넘기는 카드 — 지금 보이는 카드가 곧 지도에서 선택된 곳
+              <div
+                ref={slideRef}
+                onScroll={onSlideScroll}
+                className="no-scrollbar relative -mx-4 flex snap-x snap-mandatory gap-2.5 overflow-x-auto scroll-pl-4 px-4 pb-1 pt-0.5"
+                role="group"
+                aria-label="지도에 표시된 카페 — 옆으로 넘기면 지도에서도 함께 선택돼요"
+              >
+                {cafes.map((c) => (
+                  <div key={c.id} data-slide-id={c.id} className="w-[calc(100%-20px)] shrink-0 snap-start">
+                    <CafeCard
+                      cafe={c}
+                      variant="slide"
+                      purpose={purpose}
+                      hour={hour}
+                      now={now}
+                      plan={planByCafe[c.id]}
+                      highlighted={c.id === selectedId}
+                      badge={c.id === pick?.id ? "추천" : undefined}
+                    />
+                  </div>
+                ))}
+              </div>
             ) : (
               <div className="space-y-2.5">
                 {areaSuggestion}

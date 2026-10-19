@@ -20,7 +20,7 @@ export default function FavoritesPage() {
     stayMin
   );
   const canCompare = compare.length >= 2;
-  const suggestions = saved.length === 0 ? rankByFit(CAFES, purpose, hour, stayMin).slice(0, 3) : [];
+  const suggestions = saved.length === 0 ? rankByFit(CAFES, purpose, hour, stayMin).slice(0, 4) : [];
 
   return (
     <div className="flex h-full flex-col bg-cream-50">
@@ -38,7 +38,7 @@ export default function FavoritesPage() {
 
           {!hydrated ? null : saved.length === 0 ? (
             <>
-              <div className="flex flex-col gap-4 rounded-2xl border border-cream-300/80 bg-white p-5 sm:flex-row sm:items-center">
+              <div className="flex flex-col gap-4 rounded-[20px] bg-white p-5 shadow-card ring-1 ring-cream-300/60 sm:flex-row sm:items-center">
                 <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-cream-100 text-coffee-500" aria-hidden>
                   <Heart size={20} />
                 </span>
@@ -56,14 +56,14 @@ export default function FavoritesPage() {
                 <h2 className="text-section text-coffee-900">{PURPOSE_LABEL[purpose]}하기 좋은 곳</h2>
                 <p className="mt-0.5 text-meta text-coffee-400">{timeLabel} · 하트를 눌러 바로 저장해 보세요</p>
               </div>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
                 {suggestions.map(({ cafe }) => (
                   <CafeCard key={cafe.id} cafe={cafe} purpose={purpose} hour={hour} now={now} variant="tile" />
                 ))}
               </div>
             </>
           ) : (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
               {saved.map(({ cafe }) => (
                 <CafeCard
                   key={cafe.id}
@@ -73,7 +73,7 @@ export default function FavoritesPage() {
                   now={now}
                   variant="tile"
                   highlighted={compare.includes(cafe.id)}
-                  footer={<CompareToggle cafeId={cafe.id} quiet className="-ml-3" />}
+                  footer={<CompareToggle cafeId={cafe.id} quiet className="px-2" />}
                 />
               ))}
             </div>
