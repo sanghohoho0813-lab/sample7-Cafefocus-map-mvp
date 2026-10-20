@@ -188,7 +188,7 @@ export default function CafeCard({
         data-cafe-card={cafe.id}
         data-slide
         aria-current={highlighted ? "true" : undefined}
-        className={`relative h-full overflow-hidden rounded-[20px] bg-white transition-shadow duration-200 ${
+        className={`press relative h-full overflow-hidden rounded-[20px] bg-white ${
           highlighted ? "shadow-card-lg ring-2 ring-coffee-800" : "shadow-card ring-1 ring-cream-300/80"
         }`}
       >
@@ -223,7 +223,7 @@ export default function CafeCard({
   if (variant === "tile") {
     return (
       <article
-        className={`group relative flex h-full flex-col overflow-hidden rounded-[20px] bg-white shadow-card transition-shadow duration-200 hover:shadow-card-lg ${
+        className={`press group relative flex h-full flex-col overflow-hidden rounded-[20px] bg-white shadow-card hover:shadow-card-lg ${
           highlighted ? "ring-2 ring-coffee-700" : "ring-1 ring-cream-300/70"
         }`}
       >
@@ -275,7 +275,7 @@ export default function CafeCard({
       onMouseEnter={() => onHover?.(cafe.id)}
       onMouseLeave={() => onHover?.(null)}
       aria-current={highlighted ? "true" : undefined}
-      className={`relative scroll-my-4 rounded-2xl border bg-white transition-[border-color,box-shadow] duration-200 hover:shadow-card ${
+      className={`press relative scroll-my-4 rounded-2xl border bg-white hover:shadow-card ${
         highlighted ? "border-coffee-700 shadow-card ring-1 ring-coffee-700" : "border-cream-300/70"
       } ${open ? "" : "opacity-75"}`}
     >

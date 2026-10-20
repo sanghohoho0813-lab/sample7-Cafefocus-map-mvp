@@ -47,9 +47,13 @@ body {
 @layer components {
   /* ---- 버튼: 높이·반경·서체를 한 곳에서 통일 ---- */
   .btn {
-    @apply inline-flex select-none items-center justify-center gap-2 whitespace-nowrap rounded-xl text-btn transition-colors duration-200
+    @apply inline-flex select-none items-center justify-center gap-2 whitespace-nowrap rounded-xl text-btn transition-[color,background-color,border-color,box-shadow,transform] duration-200
       focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-coffee-600
-      disabled:cursor-not-allowed disabled:opacity-40;
+      enabled:active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-40;
+  }
+  /* a 태그 버튼은 :enabled가 없으니 따로 */
+  a.btn {
+    @apply active:scale-[0.97];
   }
   .btn-primary {
     @apply btn h-12 bg-coffee-800 px-5 text-cream-50 hover:bg-coffee-700 active:bg-coffee-900;
@@ -68,7 +72,7 @@ body {
 
   /* ---- 칩: 필터·선택 옵션 ---- */
   .chip {
-    @apply inline-flex h-10 shrink-0 cursor-pointer select-none items-center gap-1.5 whitespace-nowrap rounded-full border px-3.5 text-label transition-colors duration-200
+    @apply inline-flex h-10 shrink-0 cursor-pointer select-none items-center gap-1.5 whitespace-nowrap rounded-full border px-3.5 text-label transition-[color,background-color,border-color,transform] duration-200 active:scale-[0.96]
       focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-coffee-600;
   }
   .chip-idle {
@@ -80,7 +84,7 @@ body {
 
   /* ---- 선택형 카드 옵션 (폼) ---- */
   .option {
-    @apply flex cursor-pointer select-none items-center justify-center rounded-xl border bg-white px-3 text-label transition-colors duration-200
+    @apply flex cursor-pointer select-none items-center justify-center rounded-xl border bg-white px-3 text-label transition-[color,background-color,border-color,transform] duration-200 enabled:active:scale-[0.96]
       focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-coffee-600;
   }
   .option-idle {
@@ -93,6 +97,11 @@ body {
   .field {
     @apply w-full rounded-xl border border-cream-300 bg-white px-4 py-3 text-body text-coffee-800 outline-none transition-colors duration-200
       placeholder:text-coffee-400 focus:border-coffee-500;
+  }
+
+  /* 눌렀을 때 살짝 들어가는 카드 (터치 피드백) */
+  .press {
+    @apply transition-[transform,box-shadow,border-color] duration-200 active:scale-[0.985];
   }
 
   /* 숫자(시간·점수·거리)는 줄바꿈되지 않고 폭이 흔들리지 않게 */

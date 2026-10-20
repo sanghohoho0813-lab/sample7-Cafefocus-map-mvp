@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -47,10 +47,68 @@ import DecisionPanel from "@/components/detail/DecisionPanel";
 import TimeCompare, { type TimeSlot } from "@/components/detail/TimeCompare";
 import CheckinSummary from "@/components/detail/CheckinSummary";
 
-/** 모바일은 섹션 사이를 두꺼운 띠로 나눠(국내 상용 앱의 리듬) 한 화면에 한 주제씩, 데스크톱은 얇은 선 */
-function Section({ title, action, children }: { title: string; action?: React.ReactNode; children: React.ReactNode }) {
+/** 상세 섹션 바로가기 — 모바일은 결론부터, 데스크톱은 결론이 오른쪽에 늘 보이므로 제외 */
+type TabKey = "decision" | "time" | "checkin" | "info";
+const TABS: { key: TabKey; label: string }[] = [
+  { key: "decision", label: "결론" },
+  { key: "time", label: "시간대" },
+  { key: "checkin", label: "체크인" },
+  { key: "info", label: "정보" },
+];
+/** 스크롤 위치를 잴 때 위에 겹쳐 있는 고정 머리글 높이(px) */
+const HEADER_OFFSET = { mobile: 108, desktop: 60 };
+
+function SectionTabs({
+  tabs,
+  active,
+  onPick,
+  className = "",
+}: {
+  tabs: typeof TABS;
+  active: TabKey;
+  onPick: (k: TabKey) => void;
+  className?: string;
+}) {
   return (
-    <section className="border-t-[10px] border-cream-100 px-4 py-7 sm:px-6 lg:border-t lg:border-cream-300/70 lg:px-0">
+    <nav aria-label="상세 섹션 바로가기" className={className}>
+      {tabs.map((t) => (
+        <button
+          key={t.key}
+          type="button"
+          onClick={() => onPick(t.key)}
+          aria-current={active === t.key ? "true" : undefined}
+          className={`relative flex h-full items-center justify-center px-1 text-label transition-colors ${
+            active === t.key ? "text-coffee-900" : "text-coffee-400 hover:text-coffee-700"
+          }`}
+        >
+          {t.label}
+          <span
+            className={`absolute inset-x-2 bottom-0 h-[2px] rounded-full bg-coffee-900 transition-opacity ${active === t.key ? "opacity-100" : "opacity-0"}`}
+            aria-hidden
+          />
+        </button>
+      ))}
+    </nav>
+  );
+}
+
+/** 모바일은 섹션 사이를 두꺼운 띠로 나눠(국내 상용 앱의 리듬) 한 화면에 한 주제씩, 데스크톱은 얇은 선 */
+function Section({
+  id,
+  title,
+  action,
+  children,
+}: {
+  id?: TabKey;
+  title: string;
+  action?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <section
+      data-section={id}
+      className="border-t-[10px] border-cream-100 px-4 py-7 sm:px-6 lg:border-t lg:border-cream-300/70 lg:px-0"
+    >
       <div className="mb-4 flex items-center justify-between gap-3">
         <h2 className="text-section text-coffee-900">{title}</h2>
         {action}
@@ -71,6 +129,45 @@ export default function CafeDetail({ cafe }: { cafe: Cafe }) {
   const { purpose, hour: contextHour, now, isLive, timeWord: contextWord, stayMin, stayFromHistory, timeSel } = useFitContext();
   const [pickedHour, setPickedHour] = useState<number | null>(null);
   const [metric, setMetric] = useState<"crowd" | "noise">("crowd");
+
+  // ---- 스크롤: 사진이 지나가면 작은 머리글(이름·저장·섹션 바로가기)을 띄운다 ----
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const heroRef = useRef<HTMLDivElement>(null);
+  const [compact, setCompact] = useState(false);
+  const [tab, setTab] = useState<TabKey>("decision");
+  const frame = useRef(0);
+  const measure = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const desktop = window.innerWidth >= 1024;
+    const hero = heroRef.current;
+    setCompact(!desktop && !!hero && el.scrollTop > hero.offsetHeight - 72);
+    const offset = desktop ? HEADER_OFFSET.desktop : HEADER_OFFSET.mobile;
+    const top = el.getBoundingClientRect().top;
+    let cur: TabKey = desktop ? "time" : "decision";
+    for (const sec of el.querySelectorAll<HTMLElement>("[data-section]")) {
+      if (!sec.offsetParent) continue; // 이 화면 크기에서 숨겨진 블록
+      if (sec.getBoundingClientRect().top - top <= offset + 2) cur = sec.dataset.section as TabKey;
+    }
+    // 맨 아래까지 내렸으면 마지막 섹션
+    if (el.scrollTop + el.clientHeight >= el.scrollHeight - 4) cur = "info";
+    setTab(cur);
+  }, []);
+  const onScroll = () => {
+    cancelAnimationFrame(frame.current);
+    frame.current = requestAnimationFrame(measure);
+  };
+  useEffect(() => () => cancelAnimationFrame(frame.current), []);
+  const goTo = (key: TabKey) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const sec = [...el.querySelectorAll<HTMLElement>(`[data-section="${key}"]`)].find((x) => x.offsetParent);
+    if (!sec) return;
+    const desktop = window.innerWidth >= 1024;
+    const offset = desktop ? HEADER_OFFSET.desktop : HEADER_OFFSET.mobile;
+    const target = sec.getBoundingClientRect().top - el.getBoundingClientRect().top + el.scrollTop - offset + 1;
+    el.scrollTo({ top: Math.max(target, 0), behavior: "smooth" });
+  };
 
   useEffect(() => {
     addRecent(cafe.id);
@@ -196,10 +293,37 @@ export default function CafeDetail({ cafe }: { cafe: Cafe }) {
   );
 
   return (
-    <div className="h-full overflow-y-auto bg-white lg:bg-cream-50">
+    <div ref={scrollRef} onScroll={onScroll} className="h-full overflow-y-auto bg-white lg:bg-cream-50">
+      {/* ---------- 모바일: 사진이 지나가면 나타나는 머리글 ---------- */}
+      <div
+        className={`sticky top-0 z-40 -mb-[100px] transition-[opacity,visibility] duration-200 lg:hidden ${
+          compact ? "visible opacity-100" : "invisible opacity-0"
+        }`}
+      >
+        <div className="flex h-14 items-center gap-1 bg-white pl-1.5 pr-2.5">
+          <button
+            type="button"
+            onClick={() => (window.history.length > 1 ? router.back() : router.push("/"))}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-coffee-800 hover:bg-cream-100"
+            aria-label="뒤로 가기"
+          >
+            <ArrowLeft size={20} />
+          </button>
+          <p className="min-w-0 flex-1 truncate text-title text-coffee-900">{cafe.name}</p>
+          <CompareToggle cafeId={cafe.id} compact className="!border-transparent" />
+          <FavoriteButton cafeId={cafe.id} className="!border-transparent" />
+        </div>
+        <SectionTabs
+          tabs={TABS}
+          active={tab}
+          onPick={goTo}
+          className="grid h-11 grid-cols-4 border-b border-cream-300/70 bg-white px-2 shadow-[0_6px_12px_-10px_rgba(44,32,21,0.25)]"
+        />
+      </div>
+
       <div className="mx-auto max-w-6xl pb-32 lg:px-8 lg:pb-16 lg:pt-6">
         {/* ---------- 사진: 공간이 먼저 보이게 크게 ---------- */}
-        <div className="relative">
+        <div ref={heroRef} className="relative">
           <CafePhoto
             cafe={cafe}
             variant="wide"
@@ -250,14 +374,22 @@ export default function CafeDetail({ cafe }: { cafe: Cafe }) {
             </header>
 
             {/* 모바일: 결론을 이름 바로 아래에 */}
-            <div className="px-4 pb-7 sm:px-6 lg:hidden">
+            <div data-section="decision" className="px-4 pb-7 sm:px-6 lg:hidden">
               {planBanner && <div className="mb-4">{planBanner}</div>}
               <div className="rounded-2xl border border-cream-300/70 bg-white p-5 shadow-card" data-decision>
                 {decisionPanel}
               </div>
             </div>
 
-            <Section title="언제 가면 좋을까">
+            {/* 데스크톱: 본문 위에 붙는 섹션 바로가기 (결론은 오른쪽 패널에 늘 보임) */}
+            <SectionTabs
+              tabs={TABS.filter((t) => t.key !== "decision")}
+              active={tab === "decision" ? "time" : tab}
+              onPick={goTo}
+              className="sticky top-0 z-30 -mx-1 hidden h-12 gap-5 border-b border-cream-300/70 bg-cream-50 lg:flex"
+            />
+
+            <Section id="time" title="언제 가면 좋을까">
               {ready && (
                 <TimeCompare
                   cafe={cafe}
@@ -302,6 +434,7 @@ export default function CafeDetail({ cafe }: { cafe: Cafe }) {
             </Section>
 
             <Section
+              id="checkin"
               title="작업자 체크인"
               action={
                 <Link href={`/cafe/${cafe.id}/review`} className="btn-quiet h-10 text-label">
@@ -313,7 +446,7 @@ export default function CafeDetail({ cafe }: { cafe: Cafe }) {
               <CheckinSummary summary={summary} reviews={allReviews} />
             </Section>
 
-            <Section title="상세 정보">
+            <Section id="info" title="상세 정보">
               <p className="text-body text-coffee-600">{cafe.description}</p>
               <dl className="mt-6 grid grid-cols-2 gap-x-4 gap-y-4 sm:grid-cols-3">
                 {env.map(({ icon: Icon, label, value }) => (

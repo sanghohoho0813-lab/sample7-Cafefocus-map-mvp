@@ -136,6 +136,10 @@ const config: Config = {
           "0%": { opacity: "0", transform: "translateY(12px) scale(0.97)" },
           "100%": { opacity: "1", transform: "translateY(0) scale(1)" },
         },
+        "toast-down": {
+          "0%": { opacity: "0", transform: "translateY(-14px) scale(0.97)" },
+          "100%": { opacity: "1", transform: "translateY(0) scale(1)" },
+        },
         /* CTA 버튼 위를 아주 약하게 스치는 광택.
            한 번 지나간 뒤 대부분의 시간은 화면 밖에서 멈춰 있어
            "은은하게 한 번씩" 반짝이는 정도로만 보인다. */
@@ -163,6 +167,7 @@ const config: Config = {
         "pulse-ring": "pulse-ring 2s ease-out infinite",
         "heart-pop": "heart-pop 0.35s ease-out",
         "toast-in": "toast-in 0.25s ease-out both",
+        "toast-down": "toast-down 0.28s cubic-bezier(0.2, 0.9, 0.25, 1) both",
         "cta-sweep": "cta-sweep 6s ease-in-out infinite",
         "sheet-up": "sheet-up 0.22s ease-out both",
         "check-in": "check-in 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both",

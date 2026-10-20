@@ -70,6 +70,8 @@ export default function ExploreControls({
   const { area, setArea, filters, toggleFilter, setFilters, prefs, setPurpose, timeSel, setTimeSel } = useApp();
   const now = useNow();
   const [sheetOpen, setSheetOpen] = useState(false);
+  // 모바일 전체 화면 검색이 열리면 하단 탭 바보다 위에 쌓이게
+  const [searching, setSearching] = useState(false);
 
   const changeArea = (a: AreaKey | null) => {
     setArea(a);
@@ -82,13 +84,71 @@ export default function ExploreControls({
   const nowDisplay = offHours ? `${effectiveHour("now", now)}시 기준` : "지금";
 
   return (
-    <div className="z-40 shrink-0 space-y-2 border-b border-cream-300/70 bg-cream-50 px-4 pb-3 pt-3 lg:px-5">
-      <div className="flex items-center gap-2">
-        <SearchBox onSelectArea={(k) => changeArea(k)} onSelectCafe={onSelectCafe} className="min-w-0 flex-1 lg:max-w-md" />
+    <div className={`${searching ? "z-[80]" : "z-40"} shrink-0 space-y-2 border-b border-cream-300/70 bg-cream-50 px-4 pb-3 pt-3 lg:px-5`}>
+      {/* 넓은 화면: 한 줄 (검색 · 질문 · 조건, 키보드 순서와 같다) · 그보다 좁으면 검색 + 조건 / 질문 두 줄 */}
+      <div className="flex flex-wrap items-center gap-2">
+        <SearchBox
+          onSelectArea={(k) => changeArea(k)}
+          onSelectCafe={onSelectCafe}
+          onOverlayChange={setSearching}
+          className="min-w-0 flex-1 lg:max-w-md xl:w-[320px] xl:flex-none"
+        />
+
+        {/* 어디서 · 무엇을 · 언제 */}
+        <div
+          className="grid w-full grid-cols-3 divide-x divide-cream-300 rounded-2xl border border-cream-300 bg-white lg:max-w-2xl order-3 xl:order-none xl:w-auto xl:min-w-0 xl:flex-1"
+          role="group"
+          aria-label="어디서 · 무엇을 · 언제"
+        >
+          <BarSelect
+            caption="어디서"
+            label="지역"
+            display={area ? AREA_MAP[area].name : "모든 지역"}
+            value={area ?? "all"}
+            onChange={(v) => changeArea(v === "all" ? null : (v as AreaKey))}
+            changed={area !== null}
+          >
+            <option value="all">모든 지역</option>
+            {AREAS.map((a) => (
+              <option key={a.key} value={a.key}>
+                {a.name}
+              </option>
+            ))}
+          </BarSelect>
+          <BarSelect
+            caption="무엇을"
+            label="작업 목적"
+            display={PURPOSE_LABEL[prefs.purpose]}
+            value={prefs.purpose}
+            onChange={(v) => setPurpose(v as Purpose)}
+            changed={false}
+          >
+            {PURPOSES.map((p) => (
+              <option key={p.key} value={p.key}>
+                {p.label}
+              </option>
+            ))}
+          </BarSelect>
+          <BarSelect
+            caption={timeSel === "now" && now ? `언제 · ${pad2(now.getHours())}:${pad2(now.getMinutes())}` : "언제"}
+            label="갈 시간"
+            display={timeSel === "now" ? nowDisplay : `${timeSel}시 도착`}
+            value={String(timeSel)}
+            onChange={(v) => setTimeSel(v === "now" ? "now" : Number(v))}
+            changed={timeSel !== "now"}
+          >
+            <option value="now">{offHours ? `${nowText} (${nowDisplay})` : nowText}</option>
+            {DATA_HOURS.map((h) => (
+              <option key={h} value={h}>
+                {h}시 도착
+              </option>
+            ))}
+          </BarSelect>
+        </div>
         <button
           type="button"
           onClick={() => setSheetOpen(true)}
-          className={`btn h-12 shrink-0 border px-3.5 lg:px-4 ${
+          className={`btn h-12 shrink-0 border px-3.5 lg:px-4 order-2 xl:order-none ${
             filters.length ? "border-coffee-800 bg-coffee-800 text-cream-50" : "border-cream-300 bg-white text-coffee-700 hover:border-coffee-300"
           }`}
           aria-label={`조건${filters.length ? ` ${filters.length}개 적용됨` : " 더하기"}`}
@@ -97,58 +157,6 @@ export default function ExploreControls({
           <span className="hidden sm:inline">조건</span>
           {filters.length > 0 && <span className="num">{filters.length}</span>}
         </button>
-      </div>
-
-      {/* 어디서 · 무엇을 · 언제 */}
-      <div
-        className="grid grid-cols-3 divide-x divide-cream-300 rounded-2xl border border-cream-300 bg-white lg:max-w-2xl"
-        role="group"
-        aria-label="어디서 · 무엇을 · 언제"
-      >
-        <BarSelect
-          caption="어디서"
-          label="지역"
-          display={area ? AREA_MAP[area].name : "모든 지역"}
-          value={area ?? "all"}
-          onChange={(v) => changeArea(v === "all" ? null : (v as AreaKey))}
-          changed={area !== null}
-        >
-          <option value="all">모든 지역</option>
-          {AREAS.map((a) => (
-            <option key={a.key} value={a.key}>
-              {a.name}
-            </option>
-          ))}
-        </BarSelect>
-        <BarSelect
-          caption="무엇을"
-          label="작업 목적"
-          display={PURPOSE_LABEL[prefs.purpose]}
-          value={prefs.purpose}
-          onChange={(v) => setPurpose(v as Purpose)}
-          changed={false}
-        >
-          {PURPOSES.map((p) => (
-            <option key={p.key} value={p.key}>
-              {p.label}
-            </option>
-          ))}
-        </BarSelect>
-        <BarSelect
-          caption={timeSel === "now" && now ? `언제 · ${pad2(now.getHours())}:${pad2(now.getMinutes())}` : "언제"}
-          label="갈 시간"
-          display={timeSel === "now" ? nowDisplay : `${timeSel}시 도착`}
-          value={String(timeSel)}
-          onChange={(v) => setTimeSel(v === "now" ? "now" : Number(v))}
-          changed={timeSel !== "now"}
-        >
-          <option value="now">{offHours ? `${nowText} (${nowDisplay})` : nowText}</option>
-          {DATA_HOURS.map((h) => (
-            <option key={h} value={h}>
-              {h}시 도착
-            </option>
-          ))}
-        </BarSelect>
       </div>
 
       {/* 더한 조건만 보인다 — 바로 지울 수 있게 */}

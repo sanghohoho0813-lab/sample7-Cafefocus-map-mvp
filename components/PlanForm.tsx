@@ -216,7 +216,8 @@ export default function PlanForm({ cafe }: { cafe: Cafe }) {
                 {hours.map((h) => {
                   const past = date ? isPastSlot(date, h, now) : true;
                   const taken = date ? busyHours.has(`${date}:${h}`) : false;
-                  const lv = levelOf(hourlyAt(cafe, h).crowd);
+                  const crowd = hourlyAt(cafe, h).crowd;
+                  const lv = levelOf(crowd);
                   const active = startHour === h;
                   const isRec = recommended?.hour === h && !past && !taken;
                   return (
@@ -225,7 +226,7 @@ export default function PlanForm({ cafe }: { cafe: Cafe }) {
                       type="button"
                       disabled={past || taken || !date}
                       onClick={() => setStartHour(h)}
-                      className={`option h-16 flex-col gap-1 disabled:cursor-not-allowed ${taken ? "disabled:opacity-60" : "disabled:opacity-35"} ${active ? "option-active" : "option-idle"}`}
+                      className={`option h-[76px] flex-col gap-1 disabled:cursor-not-allowed ${taken ? "disabled:opacity-60" : "disabled:opacity-35"} ${active ? "option-active" : "option-idle"}`}
                       aria-pressed={active}
                       aria-label={`${h}시, ${taken ? "이미 일정 있음" : `예상 ${LEVEL_WORD[lv]}`}${isRec ? ", 추천" : ""}${past ? ", 지난 시간" : ""}`}
                     >
@@ -244,6 +245,15 @@ export default function PlanForm({ cafe }: { cafe: Cafe }) {
                         }`}
                       >
                         {taken && !past ? "일정 있음" : isRec ? "추천" : LEVEL_WORD[lv]}
+                      </span>
+                      {/* 예상 혼잡을 막대로도 — 칸을 훑기만 해도 한산한 시간이 보이게 */}
+                      <span className={`mt-0.5 h-1 w-9 overflow-hidden rounded-full ${active ? "bg-white/25" : "bg-cream-200"}`} aria-hidden>
+                        <span
+                          className={`block h-full rounded-full ${
+                            active ? "bg-cream-50" : isRec ? "bg-forest-500" : lv === "busy" ? "bg-coffee-500" : lv === "normal" ? "bg-coffee-300" : "bg-coffee-200"
+                          }`}
+                          style={{ width: `${Math.max(crowd, 10)}%` }}
+                        />
                       </span>
                     </button>
                   );

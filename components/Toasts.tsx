@@ -6,8 +6,8 @@ import { X } from "lucide-react";
 import { useApp } from "@/lib/store";
 
 /**
- * 화면 아래쪽에 깔린 고정 바(탭 바·저장 버튼 바·비교 바 등, data-bottom-bar)를 재서
- * 그 위에 알림을 띄운다. 공용 뒤로·앞으로 버튼이 있으면 그 자리도 비켜 간다.
+ * 데스크톱: 화면 아래쪽에 깔린 고정 바(data-bottom-bar)를 재서 그 위에 알림을 띄운다.
+ * 모바일: 아래쪽은 탭 바·저장 버튼·공용 뒤로·앞으로 버튼이 겹치는 자리라, 화면 위쪽에서 내려온다.
  */
 function bottomOffset(): number {
   const vh = window.innerHeight;
@@ -23,27 +23,31 @@ function bottomOffset(): number {
 
 export default function Toasts() {
   const { toasts, dismissToast } = useApp();
-  const [bottom, setBottom] = useState(80);
+  const [pos, setPos] = useState<{ top?: number; bottom?: number }>({ bottom: 80 });
 
   useLayoutEffect(() => {
-    if (toasts.length) setBottom(bottomOffset());
+    if (!toasts.length) return;
+    setPos(window.innerWidth < 1024 ? { top: 44 } : { bottom: bottomOffset() });
   }, [toasts]);
 
   if (!toasts.length) return null;
+  const fromTop = pos.top !== undefined;
 
   return (
     <div
-      className="pointer-events-none fixed inset-x-0 z-[70] flex flex-col items-center gap-2 px-4"
-      style={{ bottom }}
+      className="pointer-events-none fixed inset-x-0 z-[70] flex flex-col items-center gap-2 px-3"
+      style={pos}
       role="status"
       aria-live="polite"
     >
       {toasts.map((t) => (
         <div
           key={t.id}
-          className="pointer-events-auto flex max-w-md items-center gap-3 rounded-2xl bg-coffee-900/95 py-2.5 pl-4 pr-2 text-meta font-medium text-cream-50 shadow-card-lg animate-toast-in"
+          className={`pointer-events-auto flex w-full max-w-md items-center gap-3 rounded-2xl bg-coffee-900/95 py-2.5 pl-4 pr-2 text-meta font-medium text-cream-50 shadow-card-lg backdrop-blur ${
+            fromTop ? "animate-toast-down" : "animate-toast-in"
+          }`}
         >
-          <span>{t.message}</span>
+          <span className="min-w-0 flex-1">{t.message}</span>
           {t.action?.href && (
             <Link
               href={t.action.href}

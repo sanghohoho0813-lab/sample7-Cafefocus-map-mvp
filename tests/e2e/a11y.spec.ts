@@ -23,6 +23,12 @@ const STATES: { name: string; route: string; open: (page: import("@playwright/te
   { name: "적합도 계산 기준", route: "/", open: async (p) => p.getByRole("button", { name: /계산 기준/ }).click() },
   { name: "마커 선택", route: "/", open: async (p) => p.locator("[data-cafe-marker]").first().click() },
   { name: "비교할 카페 고르기", route: "/compare", open: async (p) => p.getByRole("button", { name: "카페 고르기" }).click() },
+  { name: "검색 열림", route: "/", open: async (p) => p.getByLabel("지역·역·카페 검색").click() },
+  {
+    name: "상세 스크롤 머리글",
+    route: "/cafe/cafe-morrow",
+    open: async (p) => p.locator("main .overflow-y-auto").first().evaluate((el) => el.scrollTo(0, 900)),
+  },
 ];
 
 for (const s of STATES) {

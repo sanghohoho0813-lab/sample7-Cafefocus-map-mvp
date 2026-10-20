@@ -3,12 +3,13 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
-import { ArrowLeft, CheckCircle2, CalendarX2, AlertCircle, Star, Clock3, CalendarCheck2, Check, MapPin } from "lucide-react";
+import { ArrowLeft, CheckCircle2, CalendarX2, AlertCircle, Star, Clock3, CalendarCheck2, Check, MapPin, ChevronRight } from "lucide-react";
 import { AREA_MAP, CAFE_MAP } from "@/lib/data/cafes";
 import { bestHour, explainFit, PURPOSE_LABEL } from "@/lib/fit";
 import { buildExploreQuery } from "@/lib/exploreQuery";
 import { dateKey, formatDate, formatDuration, hm, relativeDate, timeRange } from "@/lib/time";
 import { reviewSummaryTags } from "@/lib/reviews";
+import { HABIT_MIN_VISITS, LIKE_LABEL, habitsFrom } from "@/lib/personal";
 import { useApp } from "@/lib/store";
 import { useNow } from "@/lib/useNow";
 import CafePhoto from "@/components/CafePhoto";
@@ -26,9 +27,22 @@ export default function PlanView() {
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   if (!hydrated) {
+    // 저장소를 읽는 짧은 순간 — 빈 화면 대신 같은 모양의 자리표시
     return (
-      <div className="flex h-full items-center justify-center" aria-busy>
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-cream-300 border-t-coffee-700" />
+      <div className="h-full overflow-hidden bg-cream-50" aria-busy aria-label="작업 일정을 불러오는 중">
+        <div className="h-14 border-b border-cream-300/70 bg-white" />
+        <div className="mx-auto max-w-2xl px-4 pt-8 sm:px-6">
+          <div className="mx-auto h-16 w-16 animate-pulse rounded-full bg-cream-200" />
+          <div className="mx-auto mt-4 h-7 w-56 animate-pulse rounded-lg bg-cream-200" />
+          <div className="mx-auto mt-2.5 h-4 w-40 animate-pulse rounded bg-cream-200" />
+          <div className="mt-8 overflow-hidden rounded-[24px] bg-white ring-1 ring-cream-300/70">
+            <div className="aspect-[2.6/1] w-full animate-pulse bg-cream-200" />
+            <div className="grid grid-cols-2 gap-4 p-5">
+              <div className="h-12 animate-pulse rounded-lg bg-cream-100" />
+              <div className="h-12 animate-pulse rounded-lg bg-cream-100" />
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -240,6 +254,44 @@ export default function PlanView() {
 
           {plan.status === "cancelled" && <div className="h-3" aria-hidden />}
         </article>
+
+        {/* ---------- 체크인이 남긴 변화: 내 기록이 다음 추천에 어떻게 쓰이는지 ---------- */}
+        {plan.status === "completed" && (() => {
+          const h = habitsFrom(plans, reviews);
+          const done = plans.filter((p) => p.status === "completed").length;
+          const items = [
+            { label: "완료한 작업", value: `${done}회` },
+            h.avgStayMin ? { label: "평균 작업 시간", value: formatDuration(h.avgStayMin) } : null,
+            h.topArea ? { label: "자주 가는 지역", value: AREA_MAP[h.topArea].name } : null,
+          ].filter(Boolean) as { label: string; value: string }[];
+          return (
+            <section className="mt-5 rounded-[20px] bg-white p-5 shadow-card ring-1 ring-cream-300/60" aria-label="내 작업 패턴 반영">
+              <div className="flex items-center justify-between gap-3">
+                <p className="flex items-center gap-1.5 text-label text-forest-700">
+                  <Check size={16} strokeWidth={2.8} aria-hidden />
+                  내 작업 패턴에 반영됐어요
+                </p>
+                <Link href="/my" className="flex shrink-0 items-center text-label text-coffee-500 hover:text-coffee-800">
+                  내 작업 <ChevronRight size={16} aria-hidden />
+                </Link>
+              </div>
+              <dl className="mt-3.5 grid grid-cols-3 divide-x divide-cream-200 rounded-2xl bg-cream-50 py-3">
+                {items.map((it) => (
+                  <div key={it.label} className="px-2 text-center">
+                    <dt className="text-caption text-coffee-400">{it.label}</dt>
+                    <dd className="num mt-0.5 text-body font-bold text-coffee-900">{it.value}</dd>
+                  </div>
+                ))}
+              </dl>
+              <p className="mt-3 text-caption text-coffee-500">
+                {h.visits >= HABIT_MIN_VISITS
+                  ? `지도·상세 점수가 내 평균 ${formatDuration(h.avgStayMin ?? 120)} 머무는 기준으로 계산돼요.`
+                  : `작업 기록이 ${HABIT_MIN_VISITS}건 이상 쌓이면 점수에 내 평균 머무는 시간을 반영해요.`}
+                {h.likes.length > 0 && ` 만족했던 조건: ${h.likes.slice(0, 2).map((k) => LIKE_LABEL[k]).join(" · ")}`}
+              </p>
+            </section>
+          );
+        })()}
 
         {/* ---------- 다음 행동: 상태별 주 행동 하나 ---------- */}
         <div className="mt-6 flex flex-col gap-2.5 sm:flex-row">

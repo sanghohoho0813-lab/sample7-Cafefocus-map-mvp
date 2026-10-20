@@ -42,7 +42,21 @@ export default function HourlyChart({
 
   return (
     <div>
-      <div className="flex items-end gap-1 pt-7" style={{ height: height + 28 }} role="group" aria-label={`시간대별 ${metric === "noise" ? "소음" : "혼잡도"}`}>
+      <div
+        className="relative flex items-end gap-1 pt-7"
+        style={{ height: height + 28 }}
+        role="group"
+        aria-label={`시간대별 ${metric === "noise" ? "소음" : "혼잡도"}`}
+      >
+        {/* 단계 경계(보통·혼잡이 시작되는 높이) — 막대가 어느 구간에 있는지 한눈에 */}
+        {[40, 62].map((lv) => (
+          <span
+            key={lv}
+            className="pointer-events-none absolute inset-x-0 border-t border-dashed border-cream-300"
+            style={{ bottom: `${(lv / 100) * height}px` }}
+            aria-hidden
+          />
+        ))}
         {cafe.hourly.map((p) => {
           const v = p[metric];
           const lv = levelOf(v);
@@ -58,7 +72,7 @@ export default function HourlyChart({
               aria-pressed={sel}
             >
               <span
-                className={`relative block w-full rounded-t-[4px] transition-colors duration-200 ${
+                className={`relative block w-full rounded-t-md transition-[background-color,height] duration-300 ${
                   sel ? "bg-coffee-900" : !open ? "bg-cream-300" : p.hour === bestHour ? "bg-forest-500 group-hover:bg-forest-600" : `${BAR[lv]} group-hover:bg-coffee-400`
                 }`}
                 style={{ height: `${Math.max(v, 8)}%` }}
