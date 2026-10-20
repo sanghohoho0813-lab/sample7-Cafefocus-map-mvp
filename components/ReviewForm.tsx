@@ -104,6 +104,8 @@ export default function ReviewForm({ cafe }: { cafe: Cafe }) {
     !seat && "좌석",
   ].filter(Boolean) as string[];
   const valid = missing.length === 0;
+  const TOTAL_ITEMS = 5;
+  const answered = TOTAL_ITEMS - missing.length;
 
   if (!hydrated) return <PageSkeleton variant="form" />;
 
@@ -151,7 +153,7 @@ export default function ReviewForm({ cafe }: { cafe: Cafe }) {
 
   return (
     <form onSubmit={submit} className="flex h-full flex-col bg-white" noValidate>
-      <div className="flex h-14 shrink-0 items-center gap-2 border-b border-cream-300/70 bg-white px-2 lg:px-6">
+      <div className="flex h-14 shrink-0 items-center gap-2 bg-white px-2 lg:px-6">
         <button
           type="button"
           onClick={() =>
@@ -162,7 +164,22 @@ export default function ReviewForm({ cafe }: { cafe: Cafe }) {
         >
           <ArrowLeft size={20} />
         </button>
-        <h1 className="text-title text-coffee-900">작업 체크인</h1>
+        <h1 className="min-w-0 flex-1 text-title text-coffee-900">작업 체크인</h1>
+        {/* 얼마나 남았는지 — 5개 항목(만족도 · 소음 · 콘센트 · Wi-Fi · 좌석) */}
+        <span
+          className={`num mr-2 rounded-full px-2.5 py-1 text-caption font-semibold transition-colors ${
+            valid ? "bg-forest-50 text-forest-700" : "bg-cream-100 text-coffee-600"
+          }`}
+          aria-live="polite"
+        >
+          {valid ? "모두 답했어요" : `${answered}/${TOTAL_ITEMS}`}
+        </span>
+      </div>
+      <div className="h-[3px] shrink-0 bg-cream-200" aria-hidden>
+        <div
+          className={`h-full transition-[width] duration-300 ease-out ${valid ? "bg-forest-500" : "bg-coffee-700"}`}
+          style={{ width: `${(answered / TOTAL_ITEMS) * 100}%` }}
+        />
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto">

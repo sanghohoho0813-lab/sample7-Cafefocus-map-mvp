@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Plus, Minus, LocateFixed, Navigation, CalendarCheck2, Info } from "lucide-react";
+import { Plus, Minus, LocateFixed, Navigation, CalendarCheck2, Info, Crown } from "lucide-react";
 import type { AreaKey, Cafe } from "@/lib/types";
 import { AREA_MAP, DEMO_LOCATION } from "@/lib/data/cafes";
 import MapCanvas from "@/components/MapCanvas";
@@ -146,6 +146,7 @@ export default function MapView({
   purposeLabel,
   onLegendClick,
   upcoming,
+  bestId = null,
   bottomInset = 0,
   children,
 }: {
@@ -166,6 +167,8 @@ export default function MapView({
   onLegendClick?: () => void;
   /** 다가오는 내 작업 — 지도 위에 바로 보이고, 누르면 그 카페를 고른다 */
   upcoming?: { cafeId: string; label: string } | null;
+  /** 지금 조건에서 가장 잘 맞는 곳 — 마커에 왕관 표시 */
+  bestId?: string | null;
   /** 모바일에서 바텀시트가 덮는 아래쪽 높이(px) — 마커를 그 위에 둔다 */
   bottomInset?: number;
   children?: React.ReactNode;
@@ -407,6 +410,7 @@ export default function MapView({
           const open = openIds.has(cafe.id);
           const planned = plannedIds.has(cafe.id);
           const selected = cafe.id === selectedId;
+          const best = cafe.id === bestId;
           const hovered = cafe.id === hoveredId;
           const named = selected || hovered;
           // 하나를 고르면 나머지는 한 발 물러나 시선이 선택한 곳에 머문다
@@ -436,9 +440,9 @@ export default function MapView({
               className="group absolute -translate-x-1/2 -translate-y-full rounded-full pb-1.5 hover:!z-[28] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-coffee-700"
               style={{
                 ...placeStyle(pos.x, pos.y, zoom, pan),
-                zIndex: selected ? 30 : hovered ? 25 : planned ? 15 : open ? 10 : 5,
+                zIndex: selected ? 30 : hovered ? 25 : planned ? 15 : best ? 12 : open ? 10 : 5,
               }}
-              aria-label={`${cafe.name}, 적합도 ${score}점${open ? "" : ", 영업 외"}${planned ? ", 작업 예정" : ""}`}
+              aria-label={`${cafe.name}, 적합도 ${score}점${best ? ", 지금 가장 잘 맞는 곳" : ""}${open ? "" : ", 영업 외"}${planned ? ", 작업 예정" : ""}`}
               aria-pressed={selected}
             >
               <span
@@ -451,6 +455,7 @@ export default function MapView({
                   }`}
                 >
                   {planned && <CalendarCheck2 size={13} strokeWidth={2.4} className="shrink-0" aria-hidden />}
+                  {best && !planned && <Crown size={13} strokeWidth={2.4} className="shrink-0" aria-hidden />}
                   <span className={`max-w-[150px] truncate font-semibold ${named ? "" : "hidden"}`}>{cafe.name}</span>
                   <span className="num">{score}</span>
                   <span

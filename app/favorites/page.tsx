@@ -1,8 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { Heart, ArrowRight } from "lucide-react";
 import { CAFES } from "@/lib/data/cafes";
+import { distanceKm } from "@/lib/scoring";
 import { rankByFit, PURPOSE_LABEL } from "@/lib/fit";
 import { useApp } from "@/lib/store";
 import { useFitContext } from "@/lib/useFitContext";
@@ -13,12 +15,20 @@ export default function FavoritesPage() {
   const { favorites, compare, hydrated } = useApp();
   const { purpose, hour, now, timeLabel, stayMin } = useFitContext();
 
-  const saved = rankByFit(
+  const [sort, setSort] = useState<"fit" | "near" | "recent">("fit");
+  const ranked = rankByFit(
     CAFES.filter((c) => favorites.includes(c.id)),
     purpose,
     hour,
     stayMin
   );
+  const saved =
+    sort === "near"
+      ? [...ranked].sort((a, b) => distanceKm(a.cafe.lat, a.cafe.lng) - distanceKm(b.cafe.lat, b.cafe.lng))
+      : sort === "recent"
+        ? // 저장 목록은 최근에 담은 것이 뒤에 쌓인다
+          [...ranked].sort((a, b) => favorites.indexOf(b.cafe.id) - favorites.indexOf(a.cafe.id))
+        : ranked;
   const canCompare = compare.length >= 2;
   const suggestions = saved.length === 0 ? rankByFit(CAFES, purpose, hour, stayMin).slice(0, 4) : [];
 
@@ -30,13 +40,47 @@ export default function FavoritesPage() {
             <h1 className="text-page text-coffee-900">저장한 카페</h1>
             {hydrated && saved.length > 0 && (
               <p className="mt-1 text-meta text-coffee-400">
-                {PURPOSE_LABEL[purpose]} · {timeLabel.replace(" 기준", "")} 기준 적합도순
+                {PURPOSE_LABEL[purpose]} · {timeLabel.replace(" 기준", "")} 기준
                 {saved.length >= 2 ? " · 2~3곳을 담아 비교해 보세요" : ""}
               </p>
             )}
+            {hydrated && saved.length >= 2 && (
+              <div role="radiogroup" aria-label="저장 목록 정렬" className="mt-4 flex gap-1.5">
+                {(
+                  [
+                    ["fit", "적합도순"],
+                    ["near", "가까운순"],
+                    ["recent", "최근 저장순"],
+                  ] as const
+                ).map(([k, label]) => (
+                  <button
+                    key={k}
+                    type="button"
+                    role="radio"
+                    aria-checked={sort === k}
+                    onClick={() => setSort(k)}
+                    className={`chip h-8 px-3 text-caption font-semibold ${sort === k ? "chip-active" : "chip-idle"}`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
           </header>
 
-          {!hydrated ? null : saved.length === 0 ? (
+          {!hydrated ? (
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3" aria-busy="true" aria-label="불러오는 중">
+              {[0, 1, 2, 3].map((i) => (
+                <div key={i} className="overflow-hidden rounded-[20px] bg-white ring-1 ring-cream-300/60">
+                  <div className="aspect-[4/3] animate-pulse bg-cream-200" />
+                  <div className="space-y-2 p-3.5">
+                    <div className="h-5 w-2/3 animate-pulse rounded bg-cream-200" />
+                    <div className="h-4 w-1/2 animate-pulse rounded bg-cream-200" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : saved.length === 0 ? (
             <>
               <div className="flex flex-col gap-4 rounded-[20px] bg-white p-5 shadow-card ring-1 ring-cream-300/60 sm:flex-row sm:items-center">
                 <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-cream-100 text-coffee-500" aria-hidden>

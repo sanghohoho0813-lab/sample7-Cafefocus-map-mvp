@@ -153,6 +153,10 @@ const config: Config = {
           "0%": { transform: "translateY(100%)" },
           "100%": { transform: "translateY(0)" },
         },
+        "page-in": {
+          "0%": { opacity: "0.001" },
+          "100%": { opacity: "1" },
+        },
         /* 완료 화면의 체크 표시 — 한 번 또렷하게 */
         "check-in": {
           "0%": { transform: "scale(0.6)", opacity: "0" },
@@ -171,6 +175,7 @@ const config: Config = {
         "cta-sweep": "cta-sweep 6s ease-in-out infinite",
         "sheet-up": "sheet-up 0.22s ease-out both",
         "check-in": "check-in 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both",
+        "page-in": "page-in 0.18s ease-out",
       },
     },
   },

@@ -33,7 +33,11 @@ interface RowDef {
   value: (c: Cafe, hour: number) => string;
   /** 클수록 좋은 값 — 가장 좋은 칸을 표시한다 */
   rank?: (c: Cafe, hour: number) => number;
+  /** 막대 길이 0~100 — 모든 항목에서 "길수록 작업하기 좋음"으로 맞춘다 */
+  bar?: (c: Cafe, hour: number) => number;
 }
+
+const clamp = (v: number) => Math.max(4, Math.min(100, v));
 
 export default function ComparePage() {
   const { compare, toggleCompare, clearCompare, hydrated, favorites } = useApp();
@@ -43,19 +47,28 @@ export default function ComparePage() {
   const cafes = compare.map((id) => CAFES.find((c) => c.id === id)).filter((c): c is Cafe => Boolean(c));
 
   const rows: RowDef[] = [
-    { label: "적합도", value: (c, h) => String(fitScore(c, purpose, h, stayMin)), rank: (c, h) => fitScore(c, purpose, h, stayMin) },
     {
       label: `${hour}시 혼잡도`,
       value: (c, h) => (isOpenAt(c, h) ? CROWD_SHORT[levelOf(hourlyAt(c, h).crowd)] : "영업 외"),
       rank: (c, h) => (isOpenAt(c, h) ? -hourlyAt(c, h).crowd : -999),
+      bar: (c, h) => (isOpenAt(c, h) ? clamp(100 - hourlyAt(c, h).crowd) : 0),
     },
-    { label: "소음", value: (c) => noiseLabel(c.metrics.noiseScore), rank: (c) => c.metrics.noiseScore },
-    { label: "콘센트", value: (c) => outletLabel(c.metrics.outletScore), rank: (c) => c.metrics.outletScore },
-    { label: "Wi-Fi", value: (c) => `${c.wifiMbps}Mbps`, rank: (c) => c.wifiMbps },
-    { label: "좌석·테이블", value: (c) => (c.amenities.bigTable ? "넓음" : metricLabel(c.metrics.seatScore)), rank: (c) => c.metrics.seatScore },
-    { label: "평균 체류", value: (c) => formatStay(c.avgStayMinutes), rank: (c) => c.avgStayMinutes },
-    { label: "거리", value: (c) => formatDistance(distanceKm(c.lat, c.lng)), rank: (c) => -distanceKm(c.lat, c.lng) },
-    { label: "영업시간", value: (c) => formatHours(c) },
+    { label: "소음", value: (c) => noiseLabel(c.metrics.noiseScore), rank: (c) => c.metrics.noiseScore, bar: (c) => clamp(c.metrics.noiseScore) },
+    { label: "콘센트", value: (c) => outletLabel(c.metrics.outletScore), rank: (c) => c.metrics.outletScore, bar: (c) => clamp(c.metrics.outletScore) },
+    { label: "Wi-Fi", value: (c) => `${c.wifiMbps}Mbps`, rank: (c) => c.wifiMbps, bar: (c) => clamp((c.wifiMbps / 150) * 100) },
+    {
+      label: "좌석·테이블",
+      value: (c) => (c.amenities.bigTable ? "넓음" : metricLabel(c.metrics.seatScore)),
+      rank: (c) => c.metrics.seatScore,
+      bar: (c) => clamp(c.metrics.seatScore),
+    },
+    { label: "평균 체류", value: (c) => formatStay(c.avgStayMinutes), rank: (c) => c.avgStayMinutes, bar: (c) => clamp((c.avgStayMinutes / 240) * 100) },
+    {
+      label: "거리",
+      value: (c) => formatDistance(distanceKm(c.lat, c.lng)),
+      rank: (c) => -distanceKm(c.lat, c.lng),
+      bar: (c) => clamp((1 - Math.min(distanceKm(c.lat, c.lng), 12) / 12) * 100),
+    },
   ];
 
   const bestIndex = (row: RowDef): number | null => {
@@ -129,7 +142,9 @@ export default function ComparePage() {
     </Sheet>
   );
 
-  if (!hydrated) return <PageSkeleton />;
+  if (!hydrated) return <PageSkeleton variant="compare" />;
+
+  const slots = [0, 1, 2].map((i) => cafes[i] ?? null);
 
   return (
     <div className="h-full overflow-y-auto bg-cream-50">
@@ -142,21 +157,14 @@ export default function ComparePage() {
             </p>
           </div>
           {cafes.length > 0 && (
-            <div className="flex items-center gap-1">
-              {cafes.length < 3 && (
-                <button type="button" onClick={() => setPickerOpen(true)} className="btn-quiet text-label sm:hidden">
-                  <Plus size={16} /> 추가
-                </button>
-              )}
-              <button type="button" onClick={clearCompare} className="btn-quiet text-label">
-                비우기
-              </button>
-            </div>
+            <button type="button" onClick={clearCompare} className="btn-quiet -mr-3 text-label">
+              비우기
+            </button>
           )}
         </header>
 
         {cafes.length === 0 ? (
-          <div className="mt-6 rounded-2xl border border-dashed border-cream-400 bg-white">
+          <div className="mt-6 rounded-[24px] border border-dashed border-cream-400 bg-white">
             <EmptyState
               icon={Scale}
               title="비교할 카페를 2~3곳 담아보세요"
@@ -171,18 +179,76 @@ export default function ComparePage() {
           </div>
         ) : (
           <>
+            {/* ---------- 비교 대상: 세 칸 (빈 칸은 추가) ---------- */}
+            <ul className="mt-5 grid grid-cols-3 gap-2.5 sm:gap-4" aria-label="비교 중인 카페">
+              {slots.map((c, i) =>
+                c ? (
+                  <li key={c.id} className="relative min-w-0 overflow-hidden rounded-[20px] bg-white shadow-card ring-1 ring-cream-300/60">
+                    <Link href={`/cafe/${c.id}`} className="block focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-coffee-600">
+                      <div className="relative">
+                        <CafePhoto cafe={c} className="aspect-[4/3] w-full lg:aspect-[16/10]" sizes="(max-width: 640px) 33vw, 300px" overlay={false} />
+                        {winner?.cafe.id === c.id && (
+                          <span className="absolute bottom-2 left-2 flex items-center gap-1 rounded-md bg-forest-600 px-1.5 py-0.5 text-[12px] font-bold text-white shadow-sm">
+                            <Trophy size={12} aria-hidden />
+                            추천
+                          </span>
+                        )}
+                      </div>
+                      <div className="space-y-1.5 p-2.5 sm:p-3.5">
+                        <p className="line-clamp-2 min-h-[2.6em] text-label leading-snug text-coffee-900 sm:text-title">{c.name}</p>
+                        <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
+                          <ScorePill score={fitScore(c, purpose, hour, stayMin)} muted={!isOpenAt(c, hour)} />
+                          <span className="hidden text-meta text-coffee-400 sm:inline">{AREA_MAP[c.area].name}</span>
+                        </div>
+                      </div>
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => toggleCompare(c.id)}
+                      className="absolute right-1.5 top-1.5 flex h-8 w-8 items-center justify-center rounded-full bg-white/95 text-coffee-600 shadow-card hover:text-coffee-900"
+                      aria-label={`${c.name} 비교에서 빼기`}
+                    >
+                      <X size={15} />
+                    </button>
+                  </li>
+                ) : (
+                  <li key={`empty-${i}`} className="min-w-0">
+                    <button
+                      type="button"
+                      onClick={() => setPickerOpen(true)}
+                      className="flex h-full min-h-[150px] w-full flex-col items-center justify-center gap-1.5 rounded-[20px] border-2 border-dashed border-cream-400 bg-white/60 text-label text-coffee-500 transition-colors hover:border-coffee-400 hover:text-coffee-800"
+                    >
+                      <span className="flex h-9 w-9 items-center justify-center rounded-full bg-cream-100">
+                        <Plus size={18} aria-hidden />
+                      </span>
+                      카페 추가
+                    </button>
+                  </li>
+                )
+              )}
+            </ul>
+
             {/* ---------- 결론 ---------- */}
             {winner ? (
-              <section className="mt-6 flex flex-col gap-5 rounded-2xl bg-coffee-800 p-5 text-cream-50 sm:flex-row sm:items-center sm:p-6">
-                <div className="min-w-0 flex-1">
-                  <p className="flex items-center gap-1.5 text-caption font-semibold text-cream-100/70">
-                    <Trophy size={14} /> 이 조건에서 가장 잘 맞아요
-                  </p>
-                  <p className="mt-1 text-section">{winner.cafe.name}</p>
-                  <p className="mt-1 text-meta text-cream-100/80">
-                    적합도 <b className="num text-white">{winner.score}</b>
-                    {winnerReasons.length > 0 && ` · ${winnerReasons.join(" · ")}`}
-                  </p>
+              <section className="mt-5 flex flex-col gap-4 rounded-[24px] bg-coffee-800 p-5 text-cream-50 shadow-card-lg sm:flex-row sm:items-center sm:p-6">
+                <div className="flex min-w-0 flex-1 items-center gap-4">
+                  <CafePhoto cafe={winner.cafe} className="hidden h-16 w-16 shrink-0 rounded-2xl sm:block" sizes="64px" overlay={false} />
+                  <div className="min-w-0">
+                    <p className="flex items-center gap-1.5 text-caption font-semibold text-cream-100/75">
+                      <Trophy size={14} aria-hidden /> 이 조건에서 가장 잘 맞아요
+                    </p>
+                    <p className="mt-1 text-section">{winner.cafe.name}</p>
+                    {winnerReasons.length > 0 && (
+                      <ul className="mt-2 flex flex-wrap gap-1.5">
+                        {winnerReasons.map((r) => (
+                          <li key={r} className="flex items-center gap-1 rounded-full bg-white/10 px-2.5 py-1 text-caption font-medium text-cream-50">
+                            <Check size={13} strokeWidth={2.8} aria-hidden />
+                            {r}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
                 </div>
                 <Link
                   href={`/cafe/${winner.cafe.id}/plan${winner.open ? `?hour=${hour}` : ""}`}
@@ -193,81 +259,56 @@ export default function ComparePage() {
                 </Link>
               </section>
             ) : (
-              <p className="mt-6 rounded-xl bg-white px-4 py-3 text-meta text-coffee-500">
+              <p className="mt-5 rounded-2xl bg-white px-4 py-3.5 text-meta text-coffee-500 ring-1 ring-cream-300/60">
                 1곳 더 담으면 어디가 더 맞는지 알려드려요.
               </p>
             )}
 
-            {/* ---------- 근거 표 ---------- */}
-            <div className="mt-6 overflow-x-auto rounded-2xl border border-cream-300/80 bg-white">
-              {/* 2곳은 모바일 폭에 맞추고, 3곳일 때만 가로 스크롤 */}
-              <table className={`w-full table-fixed border-collapse text-left ${cafes.length >= 3 ? "min-w-[600px]" : "sm:min-w-[560px]"}`}>
-                <caption className="sr-only">카페별 작업 환경 비교</caption>
-                <thead>
-                  <tr>
-                    <th scope="col" className="sticky left-0 z-10 w-[84px] bg-white p-3 align-bottom text-meta font-medium text-coffee-400 sm:w-28 sm:p-4">
-                      항목
-                    </th>
-                    {cafes.map((c) => (
-                      <th key={c.id} scope="col" className="p-3 align-top sm:p-4">
-                        <div className="relative">
-                          <CafePhoto cafe={c} className="aspect-[4/3] w-full rounded-xl" sizes="220px" overlay={false} />
-                          <button
-                            type="button"
-                            onClick={() => toggleCompare(c.id)}
-                            className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-white/95 text-coffee-600 shadow-card hover:text-coffee-900"
-                            aria-label={`${c.name} 비교에서 빼기`}
-                          >
-                            <X size={15} />
-                          </button>
-                        </div>
-                        <Link href={`/cafe/${c.id}`} className="mt-2.5 block break-keep text-title text-coffee-900 hover:underline">
-                          {c.name}
-                        </Link>
-                        <span className="text-meta font-normal text-coffee-400">{AREA_MAP[c.area].name}</span>
-                      </th>
-                    ))}
-                    {cafes.length < 3 && (
-                      <th scope="col" className="hidden p-4 align-top sm:table-cell">
-                        <button
-                          type="button"
-                          onClick={() => setPickerOpen(true)}
-                          className="flex aspect-[4/3] w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-cream-400 text-label text-coffee-500 transition-colors hover:border-coffee-400 hover:text-coffee-800"
-                        >
-                          <Plus size={20} />
-                          카페 추가
-                        </button>
-                      </th>
-                    )}
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((row) => {
-                    const best = bestIndex(row);
-                    return (
-                      <tr key={row.label} className="border-t border-cream-200">
-                        <th scope="row" className="sticky left-0 z-10 bg-white px-3 py-3 text-meta font-medium text-coffee-500 sm:px-4">
-                          {row.label}
-                        </th>
-                        {cafes.map((c, i) => (
-                          <td
-                            key={c.id}
-                            className={`px-3 py-3 text-body tabular-nums sm:px-4 ${i === best ? "font-bold text-coffee-900" : "text-coffee-700"}`}
-                          >
-                            <span className="inline-flex items-center gap-1.5">
-                              {row.label === "적합도" ? <ScorePill score={fitScore(c, purpose, hour, stayMin)} muted={!isOpenAt(c, hour)} /> : row.value(c, hour)}
-                              {i === best && row.label !== "적합도" && (
-                                <Check size={15} strokeWidth={2.8} className="text-forest-600" aria-label="가장 좋음" />
-                              )}
+            {/* ---------- 항목별 근거: 막대가 길수록 작업하기 좋음 ---------- */}
+            <div className="mt-8 flex items-end justify-between gap-3">
+              <h2 className="text-section text-coffee-900">항목별로 보면</h2>
+              <p className="text-caption text-coffee-400">막대가 길수록 작업하기 좋아요</p>
+            </div>
+            <div className="mt-3 grid gap-3 lg:grid-cols-2">
+              {rows.map((row) => {
+                const best = bestIndex(row);
+                return (
+                  <section key={row.label} className="rounded-[20px] bg-white p-4 ring-1 ring-cream-300/60" aria-label={row.label}>
+                    <h3 className="text-label text-coffee-600">{row.label}</h3>
+                    <ul className="mt-3 space-y-2.5">
+                      {cafes.map((c, i) => {
+                        const isBest = i === best;
+                        return (
+                          <li key={c.id} className="grid grid-cols-[minmax(0,5.5rem)_minmax(0,1fr)_auto] items-center gap-3 sm:grid-cols-[minmax(0,8rem)_minmax(0,1fr)_auto]">
+                            <span className={`truncate text-meta ${isBest ? "font-semibold text-coffee-900" : "text-coffee-500"}`}>{c.name}</span>
+                            <span className="h-2 overflow-hidden rounded-full bg-cream-200" aria-hidden>
+                              <span
+                                className={`block h-full rounded-full transition-[width] duration-500 ${isBest ? "bg-forest-500" : "bg-coffee-300"}`}
+                                style={{ width: `${row.bar?.(c, hour) ?? 0}%` }}
+                              />
                             </span>
-                          </td>
-                        ))}
-                        {cafes.length < 3 && <td className="hidden sm:table-cell" />}
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                            <span className={`num flex items-center gap-1 text-meta ${isBest ? "font-bold text-forest-700" : "text-coffee-700"}`}>
+                              {row.value(c, hour)}
+                              {isBest && <Check size={14} strokeWidth={2.8} aria-label="가장 좋음" />}
+                            </span>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </section>
+                );
+              })}
+              <section className="rounded-[20px] bg-white p-4 ring-1 ring-cream-300/60" aria-label="영업시간">
+                <h3 className="text-label text-coffee-600">영업시간</h3>
+                <ul className="mt-3 space-y-2.5">
+                  {cafes.map((c) => (
+                    <li key={c.id} className="flex items-center justify-between gap-3 text-meta">
+                      <span className="truncate text-coffee-500">{c.name}</span>
+                      <span className="num font-semibold text-coffee-800">{formatHours(c)}</span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
             </div>
             <p className="mt-3 text-caption text-coffee-400">혼잡·소음은 데모 데이터 기반 예측값이에요. ✓ 표시는 항목별 가장 좋은 값이에요.</p>
           </>

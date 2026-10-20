@@ -147,14 +147,23 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                     key={href}
                     href={href}
                     aria-current={active ? "page" : undefined}
-                    className={`relative flex h-16 flex-1 flex-col items-center justify-center gap-1 transition-colors duration-200 ${
+                    className={`relative flex h-16 flex-1 flex-col items-center justify-center gap-0.5 transition-colors duration-200 active:scale-95 ${
                       active ? "text-coffee-900" : "text-coffee-400"
                     }`}
                   >
-                    <span className="relative">
+                    {/* 지금 있는 탭은 아이콘 뒤에 은은한 바탕 */}
+                    <span
+                      className={`relative flex h-8 w-14 items-center justify-center rounded-full transition-colors duration-200 ${
+                        active ? "bg-cream-200" : ""
+                      }`}
+                    >
                       <Icon size={22} strokeWidth={active ? 2.3 : 1.9} />
                       {badge !== null && (
-                        <span className="num absolute -right-2.5 -top-1.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-coffee-800 px-1 text-[11px] font-bold text-white">
+                        // 숫자가 바뀔 때마다 한 번 튀어 올라 반영됐음을 알린다
+                        <span
+                          key={badge}
+                          className="num absolute right-1 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-coffee-800 px-1 text-[11px] font-bold text-white ring-2 ring-white animate-pop-in"
+                        >
                           {badge}
                         </span>
                       )}

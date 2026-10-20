@@ -42,6 +42,7 @@ import CafePhoto from "@/components/CafePhoto";
 import HourlyChart from "@/components/HourlyChart";
 import FavoriteButton from "@/components/FavoriteButton";
 import CompareToggle from "@/components/CompareToggle";
+import ShareButton from "@/components/ShareButton";
 import CafeCard from "@/components/CafeCard";
 import DecisionPanel from "@/components/detail/DecisionPanel";
 import TimeCompare, { type TimeSlot } from "@/components/detail/TimeCompare";
@@ -310,6 +311,7 @@ export default function CafeDetail({ cafe }: { cafe: Cafe }) {
             <ArrowLeft size={20} />
           </button>
           <p className="min-w-0 flex-1 truncate text-title text-coffee-900">{cafe.name}</p>
+          <ShareButton title={cafe.name} path={`/cafe/${cafe.id}`} />
           <CompareToggle cafeId={cafe.id} compact className="!border-transparent" />
           <FavoriteButton cafeId={cafe.id} className="!border-transparent" />
         </div>
@@ -345,6 +347,7 @@ export default function CafeDetail({ cafe }: { cafe: Cafe }) {
               <ArrowLeft size={19} />
             </button>
             <div className="flex items-center gap-2 lg:hidden">
+              <ShareButton title={cafe.name} path={`/cafe/${cafe.id}`} onImage />
               <CompareToggle cafeId={cafe.id} onImage />
               <FavoriteButton cafeId={cafe.id} onImage />
             </div>
@@ -514,7 +517,10 @@ export default function CafeDetail({ cafe }: { cafe: Cafe }) {
                 </Link>
                 <div className="mt-3 flex items-center justify-between">
                   <CompareToggle cafeId={cafe.id} />
-                  <FavoriteButton cafeId={cafe.id} />
+                  <div className="flex items-center gap-1">
+                    <ShareButton title={cafe.name} path={`/cafe/${cafe.id}`} />
+                    <FavoriteButton cafeId={cafe.id} />
+                  </div>
                 </div>
               </div>
             </div>

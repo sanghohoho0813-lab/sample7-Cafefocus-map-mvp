@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, Check, AlertCircle, Laptop, BookOpen, Users, Mail, BookMarked, RotateCcw } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, AlertCircle, Laptop, BookOpen, Users, Mail, BookMarked, RotateCcw, Trophy } from "lucide-react";
 import type { Purpose, PriorityKey, StayLength } from "@/lib/types";
 import { PRIORITIES, STAY_OPTIONS, recommend, type RecommendResult } from "@/lib/recommendation";
 import { PURPOSES, PURPOSE_LABEL, fitCaution, verdict } from "@/lib/fit";
@@ -12,7 +12,6 @@ import { useApp } from "@/lib/store";
 import { useFitContext } from "@/lib/useFitContext";
 import { formatDuration } from "@/lib/time";
 import CafePhoto from "@/components/CafePhoto";
-import CafeCard from "@/components/CafeCard";
 import ScorePill from "@/components/ScorePill";
 import FavoriteButton from "@/components/FavoriteButton";
 
@@ -28,7 +27,7 @@ const STEPS = ["작업 목적", "중요한 조건", "머무는 시간"];
 
 export default function RecommendPage() {
   const { prefs, setPrefs } = useApp();
-  const { hour, now, timeLabel, stayMin, stayFromHistory } = useFitContext();
+  const { hour, timeLabel, stayMin, stayFromHistory } = useFitContext();
   const [step, setStep] = useState(0);
   const [purpose, setPurpose] = useState<Purpose | null>(null);
   const [priorities, setPriorities] = useState<PriorityKey[] | null>(null);
@@ -56,6 +55,8 @@ export default function RecommendPage() {
 
   const top = results?.[0];
   const rest = results?.slice(1) ?? [];
+  // 1위가 얼마나 앞서는지 — 차이가 작으면 솔직하게 "비슷해요"
+  const gap = top && rest[0] ? top.score - rest[0].score : null;
 
   const stepNav = (
     <div className="mx-auto flex max-w-3xl gap-2.5">
@@ -223,7 +224,12 @@ export default function RecommendPage() {
               ) : (
                 <article className="mt-6 overflow-hidden rounded-[24px] bg-white shadow-card ring-1 ring-cream-300/60">
                   <div className="relative">
-                    <CafePhoto cafe={top.cafe} variant="wide" className="aspect-[16/9] w-full sm:aspect-[2.2/1]" sizes="(max-width: 768px) 100vw, 720px" />
+                    <CafePhoto cafe={top.cafe} variant="wide" overlay={false} className="aspect-[16/9] w-full sm:aspect-[2.2/1]" sizes="(max-width: 768px) 100vw, 720px" />
+                    <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/25 via-transparent to-transparent" aria-hidden />
+                    <span className="absolute left-3 top-3 flex items-center gap-1 rounded-full bg-coffee-900/90 px-3 py-1.5 text-label text-cream-50 shadow-float backdrop-blur">
+                      <Trophy size={14} aria-hidden />
+                      1위
+                    </span>
                     <FavoriteButton cafeId={top.cafe.id} onImage className="absolute right-3 top-3" />
                   </div>
                   <div className="p-5 sm:p-6">
@@ -236,6 +242,23 @@ export default function RecommendPage() {
                       </div>
                       <ScorePill score={top.score} size="lg" />
                     </div>
+                    {gap !== null && (
+                      <p
+                        className={`mt-3 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-caption font-semibold ${
+                          gap >= 5 ? "bg-forest-50 text-forest-700" : "bg-cream-100 text-coffee-600"
+                        }`}
+                      >
+                        {gap >= 5 ? (
+                          <>
+                            2위보다 <span className="num">+{gap}점</span> 앞서요
+                          </>
+                        ) : (
+                          <>
+                            2위와 <span className="num">{gap}점</span> 차이 · 거리나 분위기로 골라도 좋아요
+                          </>
+                        )}
+                      </p>
+                    )}
                     <p className="mt-4 text-title text-coffee-800">{verdict(top.cafe, hour)}</p>
                     <ul className="mt-3 space-y-2">
                       {top.reasons.map((r) => (
@@ -266,11 +289,38 @@ export default function RecommendPage() {
               {rest.length > 0 && (
                 <div className="mt-10">
                   <h2 className="text-title text-coffee-900">다른 후보</h2>
-                  <div className="mt-3 space-y-2.5">
-                    {rest.map((r) => (
-                      <CafeCard key={r.cafe.id} cafe={r.cafe} purpose={curPurpose} hour={hour} now={now} />
+                  {/* 1위와 같은 기준(고른 조건)으로 계산한 점수 그대로 — 숫자가 서로 어긋나지 않게 */}
+                  <ol className="mt-3 divide-y divide-cream-200 overflow-hidden rounded-[20px] bg-white shadow-card ring-1 ring-cream-300/60">
+                    {rest.map((r, i) => (
+                      <li key={r.cafe.id} className="relative">
+                        <Link
+                          href={`/cafe/${r.cafe.id}`}
+                          className="flex items-center gap-3 p-3.5 pr-14 transition-colors hover:bg-cream-50 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-coffee-600"
+                        >
+                          <span
+                            className="num flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-cream-200 text-label font-bold text-coffee-700"
+                            aria-label={`${i + 2}위`}
+                          >
+                            {i + 2}
+                          </span>
+                          <CafePhoto cafe={r.cafe} className="h-16 w-16 shrink-0 rounded-xl" sizes="64px" overlay={false} />
+                          <span className="min-w-0 flex-1 space-y-1">
+                            <span className="block truncate text-title text-coffee-900">{r.cafe.name}</span>
+                            <span className="flex min-w-0 items-center gap-2 text-meta">
+                              <ScorePill score={r.score} />
+                              <span className="min-w-0 truncate text-coffee-600">
+                                {AREA_MAP[r.cafe.area].name} · {formatDistance(distanceKm(r.cafe.lat, r.cafe.lng))}
+                              </span>
+                            </span>
+                            {r.reasons.length > 0 && (
+                              <span className="block truncate text-meta text-coffee-500">{r.reasons.slice(0, 2).join(" · ")}</span>
+                            )}
+                          </span>
+                        </Link>
+                        <FavoriteButton cafeId={r.cafe.id} className="absolute right-3 top-1/2 -translate-y-1/2 !border-transparent" />
+                      </li>
                     ))}
-                  </div>
+                  </ol>
                 </div>
               )}
 

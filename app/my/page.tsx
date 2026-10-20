@@ -7,7 +7,7 @@ import { AREA_MAP, CAFE_MAP } from "@/lib/data/cafes";
 import { PURPOSE_LABEL } from "@/lib/fit";
 import { PRIORITIES, STAY_OPTIONS } from "@/lib/recommendation";
 import { sortPlans, weeklyMinutes } from "@/lib/plans";
-import { dateKey, formatDate, formatDuration, relativeDate, timeRange } from "@/lib/time";
+import { dateKey, formatDate, formatDuration, hm, relativeDate, timeRange } from "@/lib/time";
 import { habitsFrom, HABIT_MIN_VISITS, LIKE_LABEL } from "@/lib/personal";
 import { reviewSummaryTags } from "@/lib/reviews";
 import { useApp } from "@/lib/store";
@@ -16,6 +16,7 @@ import CafePhoto from "@/components/CafePhoto";
 import Sheet from "@/components/Sheet";
 import PageSkeleton from "@/components/PageSkeleton";
 import SampleBridgeCTA from "@/components/SampleBridgeCTA";
+import WeekActivity from "@/components/WeekActivity";
 
 /** 기록 상태 — 색은 의미가 있을 때만 (완료: 초록, 기록 전: 주의, 취소: 흐림) */
 function StatusPill({ status }: { status: "completed" | "cancelled" | "overdue" | "planned" }) {
@@ -78,29 +79,34 @@ export default function MyPage() {
       ? `${formatDuration(habits.avgStayMin)} (내 기록)`
       : STAY_OPTIONS.find((s) => s.key === prefs.stay)?.label ?? "";
 
-  if (!hydrated) return <PageSkeleton />;
+  if (!hydrated) return <PageSkeleton variant="my" />;
 
   return (
     <div className="h-full overflow-y-auto bg-cream-50">
       <div className="mx-auto max-w-5xl px-4 pb-14 pt-6 sm:px-6 lg:pt-8">
         <header>
           <h1 className="text-page text-coffee-900">내 작업</h1>
-          <dl className="mt-5 grid grid-cols-3 divide-x divide-cream-200 rounded-[20px] bg-white py-4 shadow-card ring-1 ring-cream-300/60">
-            {stats.map((s) => (
-              <div key={s.label} className="px-3 text-center sm:px-5">
-                <dt className="text-meta text-coffee-400">{s.label}</dt>
-                <dd className="num mt-1 text-section text-coffee-900">
-                  {s.href ? (
-                    <Link href={s.href} className="underline-offset-4 hover:underline">
-                      {s.value}
-                    </Link>
-                  ) : (
-                    s.value
-                  )}
-                </dd>
-              </div>
-            ))}
-          </dl>
+          <section className="mt-5 overflow-hidden rounded-[20px] bg-white shadow-card ring-1 ring-cream-300/60" aria-label="작업 요약">
+            <dl className="grid grid-cols-3 divide-x divide-cream-200 py-4">
+              {stats.map((s) => (
+                <div key={s.label} className="px-3 text-center sm:px-5">
+                  <dt className="text-meta text-coffee-400">{s.label}</dt>
+                  <dd className="num mt-1 text-section text-coffee-900">
+                    {s.href ? (
+                      <Link href={s.href} className="underline-offset-4 hover:underline">
+                        {s.value}
+                      </Link>
+                    ) : (
+                      s.value
+                    )}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+            <div className="border-t border-cream-200 px-5 pb-4 pt-4">
+              <WeekActivity plans={plans} now={now} />
+            </div>
+          </section>
         </header>
 
         <div className="mt-8 lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-10">
@@ -206,7 +212,7 @@ export default function MyPage() {
                           <CafePhoto cafe={cafe} className="h-14 w-14 shrink-0 self-start rounded-xl" sizes="56px" overlay={false} />
                           <span className="min-w-0 flex-1">
                             <span className="num block truncate text-meta text-coffee-400">
-                              {formatDate(p.date)} · {timeRange(p.startHour, p.durationMin)}
+                              {formatDate(p.date)} · {hm(p.startHour)} · {formatDuration(p.durationMin)}
                             </span>
                             <span className="flex min-w-0 items-center gap-2">
                               <span className="truncate text-title text-coffee-900">{cafe.name}</span>

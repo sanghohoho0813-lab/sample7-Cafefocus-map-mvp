@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { History, Info, List, Map as MapIcon, RotateCcw } from "lucide-react";
+import { distanceKm, hourlyAt } from "@/lib/scoring";
 import type { CafeMetrics, Plan } from "@/lib/types";
 import { AREA_MAP, CAFES, CAFE_MAP } from "@/lib/data/cafes";
 import { applyFilters } from "@/lib/filters";
@@ -29,10 +30,11 @@ const METRIC_NAME: Record<keyof CafeMetrics, string> = {
   stayScore: "오래 머물기 편한 정도",
 };
 
-function CardSkeleton() {
+/* 저장소·현재 시각을 읽기 전 자리표시 — 실제 카드와 같은 모양·크기 */
+function CardSkeleton({ photo = 84 }: { photo?: number }) {
   return (
-    <div className="flex gap-3.5 rounded-2xl border border-cream-300/80 bg-white p-3" aria-hidden>
-      <div className="h-[84px] w-[84px] shrink-0 animate-pulse rounded-xl bg-cream-200" />
+    <div className="flex gap-3.5 rounded-2xl border border-cream-300/70 bg-white p-3" aria-hidden>
+      <div className="shrink-0 animate-pulse rounded-xl bg-cream-200" style={{ width: photo, height: photo }} />
       <div className="flex-1 space-y-2 py-1">
         <div className="h-4 w-2/3 animate-pulse rounded bg-cream-200" />
         <div className="h-3.5 w-1/2 animate-pulse rounded bg-cream-200" />
@@ -41,6 +43,27 @@ function CardSkeleton() {
     </div>
   );
 }
+
+function PickSkeleton() {
+  return (
+    <div className="overflow-hidden rounded-[20px] bg-white ring-1 ring-cream-300/70" aria-hidden>
+      <div className="aspect-[2.15/1] w-full animate-pulse bg-cream-200" />
+      <div className="space-y-2 px-4 pb-4 pt-3">
+        <div className="h-5 w-1/2 animate-pulse rounded bg-cream-200" />
+        <div className="h-3.5 w-2/3 animate-pulse rounded bg-cream-200" />
+        <div className="mt-3 h-11 w-full animate-pulse rounded-xl bg-cream-100" />
+      </div>
+    </div>
+  );
+}
+
+/** 목록 정렬 — 지도 마커는 그대로, 목록과 아래 카드의 순서만 바뀐다 */
+type SortKey = "fit" | "near" | "calm";
+const SORTS: { key: SortKey; label: string }[] = [
+  { key: "fit", label: "추천순" },
+  { key: "near", label: "가까운순" },
+  { key: "calm", label: "한산한순" },
+];
 
 export default function HomePage() {
   const { area, filters, setFilters, plans, hydrated, setArea, timeSel, setTimeSel, setPurpose } = useApp();
@@ -166,6 +189,16 @@ export default function HomePage() {
   // 지금 조건에서 가장 잘 맞는 곳 (영업 중일 때만)
   const pick = ranked[0]?.open ? ranked[0].cafe : null;
   const rest = pick ? cafes.slice(1) : cafes;
+
+  const [sort, setSort] = useState<SortKey>("fit");
+  const ordered = useMemo(() => {
+    if (sort === "fit") return cafes;
+    const arr = [...ranked];
+    if (sort === "near") arr.sort((a, b) => distanceKm(a.cafe.lat, a.cafe.lng) - distanceKm(b.cafe.lat, b.cafe.lng));
+    // 도착 시간 기준 한산한 곳부터 (영업 중인 곳 먼저)
+    else arr.sort((a, b) => Number(b.open) - Number(a.open) || hourlyAt(a.cafe, hour).crowd - hourlyAt(b.cafe, hour).crowd);
+    return arr.map((r) => r.cafe);
+  }, [sort, ranked, cafes, hour]);
   const when = timeWord === "지금" ? "지금" : `${hour}시에`;
 
   const empty = (
@@ -197,16 +230,37 @@ export default function HomePage() {
     />
   );
 
-  const list = (withHover: boolean) => (
-    <>
-      {pick && card(pick, withHover, "pick", true)}
-      {pick && rest.length > 0 && (
-        <p className="px-1 pb-0.5 pt-3 text-caption font-semibold text-coffee-400">
-          다른 후보 <span className="num">{rest.length}</span>곳
-        </p>
-      )}
-      {rest.map((c) => card(c, withHover))}
-    </>
+  const list = (withHover: boolean) =>
+    sort === "fit" ? (
+      <>
+        {pick && card(pick, withHover, "pick", true)}
+        {pick && rest.length > 0 && (
+          <p className="px-1 pb-0.5 pt-3 text-caption font-semibold text-coffee-400">
+            다른 후보 <span className="num">{rest.length}</span>곳
+          </p>
+        )}
+        {rest.map((c) => card(c, withHover))}
+      </>
+    ) : (
+      // 다른 정렬에서는 고른 순서 그대로 — 맨 위 대표 카드 없이
+      <>{ordered.map((c) => card(c, withHover))}</>
+    );
+
+  const sortControl = (
+    <div role="radiogroup" aria-label="목록 정렬" className="flex gap-1.5">
+      {SORTS.map((o) => (
+        <button
+          key={o.key}
+          type="button"
+          role="radio"
+          aria-checked={sort === o.key}
+          onClick={() => setSort(o.key)}
+          className={`chip h-8 px-3 text-caption font-semibold ${sort === o.key ? "chip-active" : "chip-idle"}`}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
   );
 
   const areaName = area ? AREA_MAP[area].name : "모든 지역";
@@ -232,7 +286,7 @@ export default function HomePage() {
           setArea(habits.topArea);
           setSelectedId(null);
         }}
-        className="mt-2 inline-flex h-8 items-center gap-1 rounded-full bg-cream-100 px-3 text-caption font-semibold text-coffee-700 hover:bg-cream-200"
+        className="inline-flex h-8 items-center gap-1 rounded-full bg-cream-100 px-3 text-caption font-semibold text-coffee-700 hover:bg-cream-200"
       >
         <History size={13} aria-hidden />
         자주 가는 {AREA_MAP[habits.topArea].name}만 보기
@@ -247,7 +301,7 @@ export default function HomePage() {
   const slideRef = useRef<HTMLDivElement>(null);
   const slideAuto = useRef(false);
   const slideTimer = useRef<number | undefined>(undefined);
-  const activeSlide = selectedId ?? cafes[0]?.id ?? null;
+  const activeSlide = selectedId ?? ordered[0]?.id ?? null;
   useEffect(() => {
     const el = slideRef.current;
     if (!el || sheet !== "collapsed" || !activeSlide) return;
@@ -259,7 +313,7 @@ export default function HomePage() {
     el.scrollTo({ left: target, behavior: "smooth" });
     window.clearTimeout(slideTimer.current);
     slideTimer.current = window.setTimeout(() => (slideAuto.current = false), 500);
-  }, [activeSlide, sheet, ready, cafes.length]);
+  }, [activeSlide, sheet, ready, ordered]);
   useEffect(() => () => window.clearTimeout(slideTimer.current), []);
 
   const onSlideScroll = () => {
@@ -274,8 +328,8 @@ export default function HomePage() {
       const first = el.querySelector<HTMLElement>("[data-slide-id]");
       if (!first) return;
       const step = first.offsetWidth + parseFloat(getComputedStyle(el).columnGap || "0");
-      const idx = Math.min(Math.max(Math.round(el.scrollLeft / step), 0), cafes.length - 1);
-      const id = cafes[idx]?.id;
+      const idx = Math.min(Math.max(Math.round(el.scrollLeft / step), 0), ordered.length - 1);
+      const id = ordered[idx]?.id;
       if (id && id !== activeSlide) setSelectedId(id);
     }, 140);
   };
@@ -303,6 +357,7 @@ export default function HomePage() {
             purposeLabel={purposeLabel}
             onLegendClick={() => setAboutOpen(true)}
             upcoming={upcoming}
+            bestId={pick?.id ?? null}
             bottomInset={peek ? 262 : 132}
           >
             {selected && (
@@ -332,7 +387,9 @@ export default function HomePage() {
             }
           >
             {!ready ? (
-              <CardSkeleton />
+              <div className="pr-5">
+                <CardSkeleton photo={96} />
+              </div>
             ) : ranked.length === 0 ? (
               empty
             ) : sheet === "collapsed" && peek ? (
@@ -344,7 +401,7 @@ export default function HomePage() {
                 role="group"
                 aria-label="지도에 표시된 카페 — 옆으로 넘기면 지도에서도 함께 선택돼요"
               >
-                {cafes.map((c) => (
+                {ordered.map((c) => (
                   <div key={c.id} data-slide-id={c.id} className="w-[calc(100%-20px)] shrink-0 snap-start">
                     <CafeCard
                       cafe={c}
@@ -361,7 +418,10 @@ export default function HomePage() {
               </div>
             ) : (
               <div className="space-y-2.5">
-                {areaSuggestion}
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  {sortControl}
+                  {areaSuggestion}
+                </div>
                 {list(false)}
               </div>
             )}
@@ -378,12 +438,15 @@ export default function HomePage() {
                 기준
               </button>
             </div>
-            {areaSuggestion}
+            <div className="mt-2.5 flex flex-wrap items-center gap-2">
+              {sortControl}
+              {areaSuggestion}
+            </div>
           </div>
           <div className="min-h-0 flex-1 space-y-2.5 overflow-y-auto p-4 pb-24">
             {!ready ? (
               <>
-                <CardSkeleton />
+                <PickSkeleton />
                 <CardSkeleton />
                 <CardSkeleton />
               </>

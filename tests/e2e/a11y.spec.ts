@@ -1,7 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { test, expect } from "./fixtures";
 
-const ROUTES = ["/", "/cafe/cafe-morrow", "/cafe/cafe-morrow/plan", "/cafe/cafe-morrow/review", "/plans/p_seed_1", "/my", "/favorites", "/compare", "/recommend"];
+const ROUTES = ["/", "/cafe/cafe-morrow", "/cafe/cafe-morrow/plan", "/cafe/cafe-morrow/review", "/plans/p_seed_1", "/my", "/favorites", "/compare", "/recommend", "/cafe/nope"];
 
 for (const route of ROUTES) {
   test(`접근성 위반 없음 (serious·critical): ${route}`, async ({ page }) => {
@@ -24,6 +24,15 @@ const STATES: { name: string; route: string; open: (page: import("@playwright/te
   { name: "마커 선택", route: "/", open: async (p) => p.locator("[data-cafe-marker]").first().click() },
   { name: "비교할 카페 고르기", route: "/compare", open: async (p) => p.getByRole("button", { name: "카페 고르기" }).click() },
   { name: "검색 열림", route: "/", open: async (p) => p.getByLabel("지역·역·카페 검색").click() },
+  {
+    name: "비교 결과",
+    route: "/compare",
+    open: async (p) => {
+      await p.evaluate(() => localStorage.setItem("cf:compare", JSON.stringify(["cafe-morrow", "workroom-17", "slow-bean"])));
+      await p.reload();
+      await p.getByText("이 조건에서 가장 잘 맞아요").waitFor();
+    },
+  },
   {
     name: "상세 스크롤 머리글",
     route: "/cafe/cafe-morrow",
